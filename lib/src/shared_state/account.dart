@@ -4,18 +4,18 @@ import 'package:motivewave/src/util/enums.dart';
 
 class Account {
   String id, name;
-  String type;
-  String status;
-  String broker;
-  String baseCurrency;
+  String? type;
+  String? status;
+  String? broker;
+  String? baseCurrency;
   double balance;
-  double accountValue;
-  double openTradeEquity;
-  double marginBalance;
+  double accountValue=0;
+  double openTradeEquity=0;
+  double marginBalance=0;
 
-  ConnectionID conn;
+  ConnectionID? conn;
 
-  Account({this.id, this.name, this.type, this.baseCurrency, this.balance, this.broker, this.conn});
+  Account({required this.id, required this.name, this.type, this.baseCurrency, this.balance=0, this.broker, this.conn});
 
   // Define that two persons are equal if their SSNs are equal
   bool operator ==(dynamic other) {
@@ -31,7 +31,7 @@ class Account {
 
 class Accounts extends ChangeNotifier {
   List<Account> _accounts = [];
-  String _defaultName;
+  String _defaultName="";
 
   String get defaultName => _defaultName;
   set defaultName(String ws) {
@@ -39,14 +39,14 @@ class Accounts extends ChangeNotifier {
     notifyListeners();
   }
 
-  Account get defaultAccount {
+  Account? get defaultAccount {
     for(var acct in _accounts) {
       if (acct.name == _defaultName) return acct;
     }
     return null;
   }
 
-  Account find(String id) {
+  Account? find(String id) {
     for(var acct in _accounts) {
       if (id == acct.id || id == acct.name) return acct;
     }

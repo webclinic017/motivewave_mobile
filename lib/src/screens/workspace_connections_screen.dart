@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 class WorkspaceConnectionsScreen extends StatefulWidget {
   final Workspace workspace;
-  WorkspaceConnectionsScreen(this.workspace, {Key key}) : super(key: key);
+  WorkspaceConnectionsScreen(this.workspace, {Key? key}) : super(key: key);
 
   @override
   _WorkspaceConnectionsScreenState createState() => _WorkspaceConnectionsScreenState(workspace);
@@ -50,9 +50,9 @@ class _WorkspaceConnectionsScreenState extends State<WorkspaceConnectionsScreen>
 
     final connections = workspace.connections;
     // Determine remaining service options that can be added to this workspace
-    var existing = List<ServiceType>();
+    var existing = <ServiceType>[];
     for(var con in connections) existing.add(con.conn.type);
-    var available = List<ServiceType>();
+    var available = <ServiceType>[];
     for(var s in ServiceType.values) {
       if (!existing.contains(s)) available.add(s);
     }

@@ -18,13 +18,13 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  provider: ^4.1.0
-  path_provider:
+  provider: ^5.0.0
+  path_provider: ^2.0.2
   fixnum:
   protobuf:
   logging:
@@ -36,6 +36,7 @@ dependencies:
   material_design_icons_flutter: ^4.0.5855
   web_socket_channel:
   flutter_bloc:
+  dart_numerics:
 
 dev_dependencies:
   flutter_test:

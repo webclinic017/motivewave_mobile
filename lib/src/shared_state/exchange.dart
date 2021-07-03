@@ -8,11 +8,11 @@ import 'package:motivewave/src/util/extensions.dart';
 
 class Exchange {
   String _symbol;
-  String _description;
+  String? _description;
   Exchange(this._symbol, [this._description]);
 
   String get symbol => _symbol;
-  String get description => _description;
+  String? get description => _description;
 }
 
 class Exchanges extends ChangeNotifier with CSV
@@ -58,14 +58,14 @@ class Exchanges extends ChangeNotifier with CSV
     notifyListeners();
   }
 
-  void add(Exchange e)
+  void add(Exchange? e)
   {
     _add(e);
     _unsavedChanges=true;
     notifyListeners();
   }
 
-  void _add(Exchange e)
+  void _add(Exchange? e)
   {
     if (e == null || _symbolMap.containsKey(e.symbol)) return;
     _symbolMap[e.symbol] = e;
@@ -74,9 +74,9 @@ class Exchanges extends ChangeNotifier with CSV
 
   bool exists(String symbol) => _symbolMap.containsKey(symbol);
 
-  Exchange get(String symbol) => _symbolMap[symbol];
+  Exchange? find(String symbol) => _symbolMap[symbol];
 
-  void remove(Exchange e)
+  void remove(Exchange? e)
   {
     if (e == null || !_symbolMap.containsKey(e.symbol)) return;
     _all.remove(e);

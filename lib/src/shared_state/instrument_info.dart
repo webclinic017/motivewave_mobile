@@ -9,28 +9,23 @@ import 'package:motivewave/src/util/util.dart';
 
 class InstrumentInfo
 {
-  String underlying, symbol, exchange, title, description, currency="USD", letter, displayMask, sectorId, industryGroupId, _key;
-  DateTime expires;
-  double minTick, displayMultiplier, pointValue, strikePrice, priceMagnifier;
-  ServiceType serviceType;
+  String symbol;
+  String? underlying, exchange, title, description, currency="USD", letter, displayMask, sectorId, industryGroupId, _key;
+  DateTime? expires;
+  double minTick, displayMultiplier=0, pointValue=0, strikePrice=0, priceMagnifier=0;
+  ServiceType? serviceType;
   InstrumentType type;
-  FuturesCategory category;
-  Instrument _instr;
-  ConnectionID connectionID;
+  FuturesCategory? category;
+  Instrument? _instr;
+  ConnectionID? connectionID;
 
-  InstrumentInfo({this.underlying, this.symbol, this.exchange, this.title, this.description, this.currency, this.letter, this.displayMask,
-    this.sectorId, this.industryGroupId, this.expires, this.minTick, this.displayMultiplier, this.pointValue, this.strikePrice,
-    this.serviceType, this.type, this.category});
+  InstrumentInfo({this.underlying, required this.symbol, this.exchange, this.title, this.description, this.currency, this.letter, this.displayMask,
+    this.sectorId, this.industryGroupId, this.expires, this.minTick=0.01, this.displayMultiplier=0, this.pointValue=0, this.strikePrice=0,
+    this.serviceType, required this.type, this.category});
 
   InstrumentInfo.future(this.serviceType, this.underlying, this.letter, this.symbol, this.exchange, this.expires, this.title,
-      this.minTick, this.pointValue, this.displayMultiplier, this.category, this.currency)
-  {
-    type = InstrumentType.FUTURE;
-  }
-  InstrumentInfo.indicator(this.symbol, this.title, this.currency, this.exchange, this.minTick)
-  {
-    type = InstrumentType.INDICATOR;
-  }
+      this.minTick, this.pointValue, this.displayMultiplier, this.category, this.currency) : type = InstrumentType.FUTURE;
+  InstrumentInfo.indicator(this.symbol, this.title, this.currency, this.exchange, this.minTick) : type = InstrumentType.INDICATOR;
 
   // TODO:
   /*
@@ -42,25 +37,24 @@ class InstrumentInfo
     expires = new Date(e);
   }*/
 
-  bool get expired => expires != null && expires.isAfter(DateTime.now());
+  bool get expired => expires != null && expires!.isAfter(DateTime.now());
 
-  int get expiresMillis => expires == null ? 0 : expires.millisecondsSinceEpoch;
+  int get expiresMillis => expires == null ? 0 : expires!.millisecondsSinceEpoch;
 
   String get key {
-    if (_key != null) return _key;
-    _key = Instrument.genKey(symbol, exchange, serviceType);
-    return _key;
+    if (_key == null) _key = Instrument.genKey(symbol, exchange, serviceType);
+    return _key??"";
   }
 
 
   @override
   String toString()
   {
-    return underlying + " " + symbol + " " + exchange + " " + DateFormat('MM/dd/yyyy').format(expires) + " " + title +
+    return (underlying ?? "")  + " " + symbol + " " +(exchange ?? "") + " " + DateFormat('MM/dd/yyyy').format(expires) + " " + (title??"") +
         " min tick: " + minTick.toString() + " point value: " + pointValue.toString();
   }
 
-  void updateOrCreate([ConnectionID cid])
+  void updateOrCreate([ConnectionID? cid])
   {
     var instr = _resolve(cid);
     if (instr != null) {
@@ -85,31 +79,31 @@ class InstrumentInfo
     toInstrument(cid);
   }
 
-  Instrument _resolve([ConnectionID cid])
+  Instrument? _resolve([ConnectionID? cid])
   {
     var instruments = ServiceHome.workspace?.instruments;
     if (instruments == null) return null;
     return instruments.findByKey(Instrument.genKey(symbol, exchange, cid == null ? serviceType : cid.type));
   }
 
-  Instrument toInstrument([ConnectionID cid])
+  Instrument toInstrument([ConnectionID? cid])
   {
     if (cid == null) {
-      for(Service s in ServiceHome.services) {
+      for(var s in ServiceHome.services) {
         if (s.type.isCompatible(serviceType)) {
           cid = s.info.connectionID;
           break;
         }
       }
     }
-    if (_instr != null && cid != null && _instr.connectionID == cid) return _instr;
+    if (_instr != null && cid != null && _instr!.connectionID == cid) return _instr!;
     _instr = _resolve(cid);
-    if (_instr != null) return _instr;
-    _instr = Instrument(symbol, exchange, type, cid, underlying: underlying, currency: currency, expires: expires, minTick: minTick,
+    if (_instr != null) return _instr!;
+    _instr = Instrument(symbol, exchange, type, cid!, underlying: underlying, currency: currency, expires: expires, minTick: minTick,
                        pointValue: pointValue, title: title, displayMultiplier: displayMultiplier, displayMask: displayMask, description: description);
     var instruments = ServiceHome.workspace?.instruments;
     if (instruments != null) instruments.add(_instr);
-    return _instr;
+    return _instr!;
   }
 
   double round(double price) => (price/minTick).round() * minTick;

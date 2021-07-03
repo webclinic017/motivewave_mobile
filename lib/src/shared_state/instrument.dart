@@ -13,39 +13,37 @@ import 'package:motivewave/src/util/util.dart';
 import 'package:motivewave/src/util/extensions.dart';
 
 class Instrument {
-  String _symbol, _exchange;
-  String underlying, currency, displayMask, title, description, notes,
+  String _symbol;
+  String? underlying, _exchange, currency, displayMask, title, description, notes,
          sectorId, industryGroupId, tradingHoursID;
-  DateTime expires;
+  DateTime? expires;
   InstrumentType type;
-  OptionType optionType;
-  double minTick, pointValue, displayMultiplier, strikePrice;
+  OptionType? optionType;
+  double minTick=0.01, pointValue=0, displayMultiplier=0, strikePrice=0;
 
-  String _key;
+  late String _key;
   int _places = -1000; // keeps track of the number of decimal places so we don't have to compute it each time
   final ConnectionID _connectionID;
 
-  Instrument(this._symbol, this._exchange, this.type, this._connectionID, {this.underlying, this.currency, this.expires, this.minTick, this.pointValue
-             , this.displayMultiplier, this.displayMask, this.title, this.notes, this.description});
+  Instrument(this._symbol, this._exchange, this.type, this._connectionID, {this.underlying, this.currency, this.expires, this.minTick=0.01, this.pointValue=0
+             , this.displayMultiplier=0, this.displayMask, this.title, this.notes, this.description}) {
+    _key = genKey(symbol, exchange, service);
+  }
 
   String get symbol => _symbol;
-  set symbol(String sym) { _symbol = sym.toUpperCase(); _key = null; }
+  set symbol(String sym) { _symbol = sym.toUpperCase(); _key = genKey(symbol, exchange, service); }
 
-  String get exchange => _exchange;
-  set exchange(String e) { _exchange = e.toUpperCase(); _key = null; }
+  String? get exchange => _exchange;
+  set exchange(String? e) { _exchange = e!.toUpperCase(); _key = genKey(symbol, exchange, service); }
 
-  bool get expired => expires == null ? false : now() > expires.millisecondsSinceEpoch;
-  int get expiresMillis => expires == null ? 0 : expires.millisecondsSinceEpoch;
+  bool get expired => expires == null ? false : now() > expires!.millisecondsSinceEpoch;
+  int get expiresMillis => expires == null ? 0 : expires!.millisecondsSinceEpoch;
 
-  ServiceType get service => _connectionID?.type;
+  ServiceType get service => _connectionID.type;
 
   ConnectionID get connectionID => _connectionID;
 
-  String get key {
-    if (_key != null) return _key;
-    _key = genKey(symbol, exchange, service);
-    return _key;
-  }
+  String get key => _key;
 
   double calcPnL(double rawMove, double qty)
   {
@@ -134,7 +132,7 @@ class Instrument {
     return price.toStringAsFixed(p);
   }
 
-  static String genKey(String symbol, String exchange, ServiceType service)
+  static String genKey(String symbol, String? exchange, ServiceType? service)
   {
     String k = SymbolUtil.replaceBadCharacters(symbol);
     if (service != null && !service.isSymbolUnique()) {
@@ -206,12 +204,15 @@ class Instruments extends ChangeNotifier with CSV
     notifyListeners();
   }
 
-  Instrument _fromCSV(String csv, Map<String, String> map)
+  Instrument? _fromCSV(String csv, Map<String, String> map)
   {
     List<String> tok = parse(csv);
     if (empty(tok)) return null;
     var conn = ConnectionID.getByID(str(tok[43], map));
-    var instr = Instrument(tok[5], str(tok[6], map), fromShortCode(tok[4]), conn);
+    var sym = str(tok[6], map);
+    var type = fromShortCode(tok[4]);
+    if (conn == null || sym == null || type == null) return null;
+    var instr = Instrument(tok[5], sym, type, conn);
 
     instr.underlying = tok[1];
     instr.currency = str(tok[8], map);
@@ -253,7 +254,7 @@ class Instruments extends ChangeNotifier with CSV
     var list = _symbolMap[instr.symbol];
     if (list != null) list.remove(instr);
 
-    var symExch = instr.symbol + ":" + instr.exchange;
+    var symExch = instr.symbol + ":" + (instr.exchange??"");
     list = _symbolExchangeMap[symExch];
     if (list != null) list.remove(instr);
 
@@ -268,17 +269,18 @@ class Instruments extends ChangeNotifier with CSV
     notifyListeners();
   }
 
-  void add(Instrument instr)
+  void add(Instrument? instr)
   {
+    if (instr == null) return;
     if (!_add(instr)) {
-      if (instr != null) log.warning("Instruments::add() instrument already exists: ${instr.key}");
+      log.warning("Instruments::add() instrument already exists: ${instr.key}");
       return;
     }
     _unsavedChanges = true;
     notifyListeners();
   }
 
-  bool _add(Instrument instr)
+  bool _add(Instrument? instr)
   {
     if (instr == null || _keyMap.containsKey(instr.key)) return false;
     _keyMap[instr.key] = instr;
@@ -287,7 +289,7 @@ class Instruments extends ChangeNotifier with CSV
     if (list == null) _symbolMap[instr.symbol] = [instr];
     else list.add(instr);
 
-    var symExch = instr.symbol + ":" + instr.exchange;
+    var symExch = instr.symbol + ":" + (instr.exchange??"");
     list = _symbolExchangeMap[symExch];
     if (list == null) _symbolExchangeMap[symExch] = [instr];
     else list.add(instr);
@@ -296,12 +298,12 @@ class Instruments extends ChangeNotifier with CSV
     return true;
   }
 
-  Instrument findByKey(String key) => _keyMap[key];
+  Instrument? findByKey(String key) => _keyMap[key];
 
-  Instrument find(String symbol, [String exchange])
+  Instrument? find(String symbol, [String? exchange])
   {
-    List<Instrument> list;
-    if (!empty(exchange)) list = _symbolExchangeMap[symbol +":" + exchange];
+    List<Instrument>? list;
+    if (exchange != null && exchange != "") list = _symbolExchangeMap[symbol +":" + exchange];
     else list = _symbolMap[symbol];
     if (list == null || list.length == 0) return null;
     return list[0];
@@ -310,13 +312,13 @@ class Instruments extends ChangeNotifier with CSV
 
   void toCSV(Instrument instr, Map<String, String> map, IOSink out)
   {
-    String opt;
+    String? opt;
     if (instr.optionType == OptionType.CALL) opt = "C";
     else if (instr.optionType == OptionType.PUT) opt = "P";
-    String title = instr.title;
-    String desc = instr.description;
+    String? title = instr.title;
+    String? desc = instr.description;
     if (desc == title) desc = null;
-    String und = instr.underlying;
+    String? und = instr.underlying;
     if (!instr.type.hasUnderlying()) und = null; // 9/18/2018 Underlying is relevant for indices with TrueData.  Its not clear where underlying is applicable so only do stocks/FX for now
 
     csv(out, [/*instr.id*/ null , und, /*baseSymbol*/null, /*productCode*/ null, instr.type == null ? "" : instr.type.shortCode,

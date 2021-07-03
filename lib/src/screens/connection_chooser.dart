@@ -17,17 +17,17 @@ import 'package:provider/provider.dart';
 class ConnectionChooser extends StatefulWidget {
   final ValueSetter<ServiceType> add;
   final List<ServiceType> options;
-  const ConnectionChooser(this.options, this.add, {Key key}) : super(key: key);
+  const ConnectionChooser(this.options, this.add, {Key? key}) : super(key: key);
 
   @override
   _ConnectionChooserState createState() => _ConnectionChooserState();
 }
 
 class _ConnectionChooserState extends State<ConnectionChooser> {
-  ServiceType _service;
+  ServiceType? _service;
   @override
   Widget build(BuildContext context) {
-    List<DropdownMenuItem> items = [];
+    List<DropdownMenuItem<ServiceType>> items = [];
     items.add(DropdownMenuItem(child: Text("Choose Connection"), value: null));
     for(var s in widget.options) {
       items.add(DropdownMenuItem(child: Text(s.asString()), value: s));
@@ -39,7 +39,7 @@ class _ConnectionChooserState extends State<ConnectionChooser> {
             children: [
               Container(
                 padding: EdgeInsets.all(10),
-                child: DropdownButton(
+                child: DropdownButton<ServiceType>(
                     value: _service,
                     items: items,
                     onChanged: (value) {
@@ -51,7 +51,7 @@ class _ConnectionChooserState extends State<ConnectionChooser> {
                   spacing: 20,
                   children: [
                     ElevatedButton(
-                        onPressed: _service == null ? null : () { widget.add(_service); Navigator.of(context).pop();  },
+                        onPressed: _service == null ? null : () { widget.add(_service!); Navigator.of(context).pop();  },
                         child: Text("Add", style: Theme.of(context).textTheme.button)
                     ),
                     ElevatedButton(

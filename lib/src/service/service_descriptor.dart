@@ -12,8 +12,8 @@ class ServiceDescriptor {
   ServiceDescriptor(this.type, this.label, {this.help, this.disclaimer, this.demoUrl, this.liveUrl});
   
   ServiceType type;
-  String demoUrl, liveUrl;
-  String label, help, disclaimer;
+  String? demoUrl, liveUrl;
+  String? label, help, disclaimer;
 
   bool get supportsFullSearch => true;
   bool get supportsSearchDescription => true;
@@ -75,9 +75,10 @@ class ServiceDescriptor {
     List<String> baseSet = [];
     List<String> list = [];
     for(var sym in symbols) {
+      if (sym.underlying == null) continue;
       if (sym.category != category) continue;
       if (baseSet.contains(sym.underlying)) continue; // Just add the first symbol
-      baseSet.add(sym.underlying);
+      baseSet.add(sym.underlying!);
       list.add(Instrument.genKey(sym.symbol, sym.exchange, sym.serviceType));
     }
     return WatchList.simple(name, list);

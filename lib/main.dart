@@ -51,7 +51,7 @@ class _MotiveWaveState extends State<MotiveWave> {
         ChangeNotifierProvider.value(value: ServiceHome.accounts),
         ChangeNotifierProvider.value(value: ServiceHome.balances),
         ChangeNotifierProvider.value(value: appState),
-        ValueListenableProvider<Workspace>.value(value: ServiceHome.workspaces.defaultWsValue),
+        ValueListenableProvider<Workspace?>.value(value: ServiceHome.workspaces.defaultWsValue),
       ],
     child: MaterialApp(
       title: 'MotiveWave',

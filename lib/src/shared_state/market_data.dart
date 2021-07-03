@@ -16,9 +16,10 @@ class BidAskUpdate extends MarketData
 {
   final double bid, bidSize, ask, askSize, last, lastSize;
   final int lastTime;
-  final String exchange;
+  final String? exchange;
 
-  BidAskUpdate({this.bid, this.bidSize, this.ask, this.askSize, this.last, this.lastSize, this.lastTime, this.exchange, int received, String key}) : super(received, key);
+  BidAskUpdate({required this.bid, required this.bidSize, required this.ask, required this.askSize,
+    this.last=0, this.lastSize=0, this.lastTime=0, this.exchange, required int received, required String key}) : super(received, key);
 
   void consume(Ticker tkr)
   {
@@ -35,13 +36,13 @@ class BidAskUpdate extends MarketData
 
 class SummaryUpdate extends MarketData
 {
-  final double dayVolume, yesterdayVolume, open, high, low, prevClose, settle,
+  final double? dayVolume, yesterdayVolume, open, high, low, prevClose, settle,
       high52, low52, netAssetValue, dividendYield, pe, eps, dividendAmount, marketCap;
-  final DateTime dividendDate;
+  final DateTime? dividendDate;
 
   SummaryUpdate({this.dayVolume, this.yesterdayVolume, this.open, this.high, this.low, this.prevClose, this.settle, this.high52, this.low52,
                  this.netAssetValue, this.pe, this.eps, this.dividendYield, this.dividendAmount, this.dividendDate, this.marketCap,
-    int received, String key}) : super(received, key);
+    required int received, required String key}) : super(received, key);
 
   void consume(Ticker tkr)
   {
@@ -67,19 +68,22 @@ class SummaryUpdate extends MarketData
 
 class TimeAndSaleUpdate extends MarketData
 {
-  final int time, orderId, aggOrderId;
-  final String exchange;
-  final double price, size, bid, bidSize, ask, askSize;
-  final bool atAsk;
+  final int time;
+  final int? orderId, aggOrderId;
+  final String? exchange;
+  final double price, size;
+  final double? bid, bidSize, ask, askSize;
+  final bool? atAsk;
 
-  TimeAndSaleUpdate(this.time, this.price, this.size, {this.bid, this.bidSize, this.ask, this.askSize, this.atAsk, this.exchange, this.orderId, this.aggOrderId, int received, String key}) : super(received, key);
+  TimeAndSaleUpdate(this.time, this.price, this.size, {this.bid, this.bidSize, this.ask, this.askSize, this.atAsk, this.exchange,
+    this.orderId, this.aggOrderId, required int received, required String key}) : super(received, key);
 
   void consume(Ticker tkr)
   {
     if (bid == null) tkr.record(TimeAndSale(tkr, time, price, size));
-    else if (bidSize == null) tkr.record(BidAskTimeAndSale(tkr, time, price, size, bid, ask, atAsk ?? price >= ask));
-    else if (orderId == null && exchange == null) tkr.record(BidAskSizeTimeAndSale(tkr, time, price, size, bid, bidSize, ask, askSize, atAsk ?? price >= ask));
-    else tkr.record(FullTimeAndSale(tkr, time, price, size, bid, bidSize, ask, askSize, atAsk, orderId, aggOrderId, exchange));
+    else if (bidSize == null) tkr.record(BidAskTimeAndSale(tkr, time, price, size, bid ?? 0, ask ?? 0, atAsk ?? price >= (ask ?? 0)));
+    else if (orderId == null && exchange == null) tkr.record(BidAskSizeTimeAndSale(tkr, time, price, size, bid ?? 0, bidSize ?? 0, ask ?? 0, askSize ?? 0, atAsk ?? price >= (ask ?? 0)));
+    else tkr.record(FullTimeAndSale(tkr, time, price, size, bid ?? 0, bidSize ?? 0, ask ?? 0, askSize ?? 0, atAsk ?? false, orderId  ?? 0, aggOrderId ?? 0, exchange ?? ""));
   }
 }
 
@@ -87,9 +91,9 @@ class TimeAndSaleUpdate extends MarketData
 class MarketDepth extends MarketData
 {
   List<double> bidPrices, bidSizes, askPrices, askSizes;
-  List<int> bidCounts, askCounts;
+  List<int>? bidCounts, askCounts;
 
-  MarketDepth({this.bidPrices, this.bidSizes, this.askPrices, this.askSizes, this.bidCounts, this.askCounts, int received, String key}) : super(received, key);
+  MarketDepth({required this.bidPrices, required this.bidSizes, required this.askPrices, required this.askSizes, this.bidCounts, this.askCounts, required int received, required String key}) : super(received, key);
 
   void consume(Ticker tkr)
   {
@@ -99,7 +103,7 @@ class MarketDepth extends MarketData
 
 class MarketByOrder extends MarketData
 {
-  MarketByOrder({int received, String key}) : super(received, key);
+  MarketByOrder({required int received, required String key}) : super(received, key);
   void consume(Ticker tkr)
   {
     // TODO Implement

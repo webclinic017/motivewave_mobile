@@ -16,7 +16,7 @@ import 'package:provider/provider.dart';
 
 class WorkspaceScreen extends StatefulWidget {
   final Workspace workspace;
-  WorkspaceScreen(this.workspace, {Key key}) : super(key: key);
+  WorkspaceScreen(this.workspace, {Key? key}) : super(key: key);
 
   @override
   _WorkspaceScreenState createState() => _WorkspaceScreenState(workspace);
@@ -39,7 +39,7 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
 
   void _save(BuildContext ctx)
   {
-    if (_formKey.currentState.validate() && workspace.connections.isNotEmpty) {
+    if (_formKey.currentState!.validate() && workspace.connections.isNotEmpty) {
       var workspaces = ctx.read<Workspaces>();
       var ws = Workspace(_nameCtrl.text, workspace.wsBucket, workspace.connections);
       ws.loadDefaults();
@@ -75,9 +75,9 @@ class _WorkspaceScreenState extends State<WorkspaceScreen> {
     _nameCtrl.text = workspace.name;
     final connections = workspace.connections;
     // Determine remaining service options that can be added to this workspace
-    var existing = List<ServiceType>();
+    var existing = <ServiceType>[];
     for(var con in connections) existing.add(con.conn.type);
-    var available = List<ServiceType>();
+    var available = <ServiceType>[];
     for(var s in ServiceType.values) {
       if (!existing.contains(s)) available.add(s);
     }

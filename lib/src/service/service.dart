@@ -20,25 +20,29 @@ import 'package:motivewave/src/shared_state/data_request.dart';
 import 'package:motivewave/src/shared_state/depth_book.dart';
 import 'package:motivewave/src/shared_state/order.dart';
 import 'package:motivewave/src/shared_state/tick.dart';
+import 'package:motivewave/src/shared_state/workspace.dart';
 import 'package:motivewave/src/util/enums.dart';
 import 'package:motivewave/src/util/util.dart';
 
 class Service {
+  final ServiceInfo info;
+  final ServiceDescriptor descriptor;
+  final Workspace workspace;
   Map<String, Account> accountMap = {};
   List<Account> accounts = [];
-  ServiceInfo info;
   bool connected = false;
   Map<Ticker, DepthBook> bookMap = {};
   List<Ticker> level1List = [];
   List<Ticker> level2List = [];
-  ServiceDescriptor descriptor;
-  SendPort out;
+  SendPort? out;
 
-  int _pendingUpdates;
+  int _pendingUpdates=0;
   List<Ticker> _level1BeforeUpdate = [];
   List<Ticker> _level2BeforeUpdate = [];
 
-  ServiceType get type => descriptor?.type;
+  Service(this.workspace, this.info, this.descriptor);
+
+  ServiceType get type => descriptor.type;
 
   void connect(BuildContext ctx) async
   {
@@ -56,7 +60,7 @@ class Service {
     }
   }
 
-  Completer<dynamic> completer;
+  var completer = Completer<ConnectResult>();
 
   Future<void> startIsolate() async => { };
 
@@ -88,7 +92,7 @@ class Service {
         String symbol = p[0];
         String exch = p.length > 1 ? p[1] : null;
         String key = Instrument.genKey(symbol, exch, type);
-        send(SrvcMsgType.RETURN_INSTR, [symbol, exch, ServiceHome.workspace.instruments.findByKey(key)]);
+        send(SrvcMsgType.RETURN_INSTR, [symbol, exch, workspace.instruments.findByKey(key)]);
         break;
       case SrvcResultType.UPDATE_INSTR: // Request to resolve an instrument
         InstrumentInfo info = p[0];
@@ -102,7 +106,7 @@ class Service {
 
   void onMarketData(MarketData md)
   {
-    var tkr = ServiceHome.workspace.tickers.findByKey(md.key);
+    var tkr = workspace.tickers.findByKey(md.key);
     if (tkr == null) {
       log.warning("onMarketData() ticker not found! ${md.key}");
       return;
@@ -146,7 +150,7 @@ class Service {
   {
     if (out == null) return;
     print("sending message: $type");
-    out.send(SrvcMessage(type, params));
+    out!.send(SrvcMessage(type, params));
   }
 
   List<Bar> getHistoricalBars(DataRequest req, DateTime start, DateTime end) => [];
@@ -154,7 +158,6 @@ class Service {
 
   void subscribeL1(Ticker tkr)
   {
-    if (tkr == null) return;
     if (!level1List.contains(tkr)) level1List.add(tkr);
   }
 
@@ -162,7 +165,6 @@ class Service {
 
   void subscribeL2(Ticker tkr)
   {
-    if (tkr == null) return;
     if (!level2List.contains(tkr)) level2List.add(tkr);
   }
 
@@ -262,6 +264,6 @@ class ResultMessage {
 // These can fill in quote information and help to determine if a trade was at the ask price
 class LastData
 {
-  double price, bid, bidSize, ask, askSize, volume;
-  int ts;
+  double price=0, bid=0, bidSize=0, ask=0, askSize=0, volume=0;
+  int ts=0;
 }

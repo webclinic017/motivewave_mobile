@@ -4,19 +4,16 @@ import 'dart:isolate';
 
 import 'package:fixnum/fixnum.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/locale.dart';
-import 'package:motivewave/src/common/version.dart';
 import 'package:motivewave/src/cqg/WebAPI/webapi_1.pb.dart';
-import 'package:motivewave/src/service/ConnectResult.dart';
 import 'package:motivewave/src/service/service.dart';
-import 'package:motivewave/src/service/service_home.dart';
+import 'package:motivewave/src/service/service_descriptor.dart';
+import 'package:motivewave/src/service/service_info.dart';
 import 'package:motivewave/src/shared_state/account.dart' as mw;
 import 'package:motivewave/src/shared_state/balance.dart' as mw;
 import 'package:motivewave/src/shared_state/credentials.dart';
-import 'package:motivewave/src/shared_state/instrument.dart';
 import 'package:motivewave/src/shared_state/instrument_info.dart';
 import 'package:motivewave/src/shared_state/market_data.dart';
-import 'package:motivewave/src/shared_state/ticker.dart';
+import 'package:motivewave/src/shared_state/workspace.dart';
 import 'package:motivewave/src/util/enums.dart';
 import 'package:motivewave/src/util/symbol_util.dart';
 import 'package:motivewave/src/util/util.dart';
@@ -32,6 +29,8 @@ class CQGService extends Service {
 
   static const int LOOKUP_TIMEOUT = 30000;
   static const int HIST_TIMEOUT = 120000;
+
+  CQGService(Workspace workspace, ServiceInfo info, ServiceDescriptor desc) : super(workspace, info, desc);
 
   // Spawn the isolate to manage the CQG Web Socket
   Future<void> startIsolate() async
@@ -80,20 +79,20 @@ class CQGProxy
   static const String AMP_DEMO_CLIENT_ID = "AMPConnect";
 
   var clientId = CLIENT_ID; // TODO: add switch for AMP
-  IOWebSocketChannel channel;
-  Credentials credentials;
+  IOWebSocketChannel? channel;
+  Credentials? credentials;
   SendPort out;
   bool connected = false;
   int reqCounter = 0;
-  int baseTime;
+  int baseTime = 0;
   Map<int, ContractMetadata> id2Contract = {};
   Map<String, ContractMetadata> symbol2Contract = {};
   Map<int, InstrumentInfo> id2Instr = {};
   Map<String, LastData> symbol2Last = {};
   List<String> badSymbols = [];
   Map<int, Completer<InformationReport>> req2InfoRpt = {};
-  Map<String, Completer<InstrumentInfo>> req2Instr = {};
-  ServiceType srvcType;
+  Map<String, Completer<InstrumentInfo?>> req2Instr = {};
+  ServiceType? srvcType;
 
   int nextReqId() { return ++reqCounter; }
 
@@ -185,13 +184,11 @@ class CQGProxy
 
   InstrumentInfo toInfo(ContractMetadata c)
   {
-    if (c == null) return null;
     String fullSym = c.contractSymbol;
     String grp = c.instrumentGroupName;
     String sym = fullSym.substring(fullSym.lastIndexOf('.')+1);
     String underlying = grp.substring(grp.lastIndexOf('.')+1);
-    String desc = c.description;
-    String exch = SymbolUtil.resolveCQGExchange(underlying);
+    String? exch = SymbolUtil.resolveCQGExchange(underlying);
 
     var type = InstrumentType.FUTURE;
     if (fullSym.startsWith("S.")) type = InstrumentType.STOCK;
@@ -274,15 +271,14 @@ class CQGProxy
     }
   }
 
-  Future<InstrumentInfo> resolveInstr(ContractMetadata c) async
+  Future<InstrumentInfo?> resolveInstr(ContractMetadata c) async
   {
-    if (c == null) return null;
     var instr = id2Instr[c.contractId];
     if (instr != null) return instr;
     // Check with main thread to see if it exists
     String fullSym = c.contractSymbol;
     String sym = fullSym.substring(fullSym.lastIndexOf('.')+1);
-    var sync = Completer<InstrumentInfo>();
+    var sync = Completer<InstrumentInfo?>();
     req2Instr[sym] = sync;
     send(SrvcResultType.REQUEST_INSTR, sym);
     try {
@@ -307,7 +303,6 @@ class CQGProxy
 
   void _register(ContractMetadata c)
   {
-    if (c == null) return;
     id2Contract[c.contractId] = c;
     String fullSym = c.contractSymbol;
     String sym = fullSym.substring(fullSym.lastIndexOf('.')+1);
@@ -315,7 +310,7 @@ class CQGProxy
   }
 
   // checks the local map and requests the contract data from the server if not found
-  Future<ContractMetadata> resolveContract(String symbol) async
+  Future<ContractMetadata?> resolveContract(String symbol) async
   {
     var c = symbol2Contract[symbol];
     if (c != null) return c;
@@ -346,19 +341,19 @@ class CQGProxy
 
   void send(SrvcResultType type, [dynamic value])
   {
-    if (out == null) return;
     out.send(ResultMessage(type, value));
   }
 
   void sendMsg(ClientMsg msg)
   {
     if (channel == null) return;
-    channel.sink.add(msg.writeToBuffer());
+    channel!.sink.add(msg.writeToBuffer());
   }
 
   void listen() async
   {
-    await for (var val in channel.stream) {
+    if (channel == null) return;
+    await for (var val in channel!.stream) {
       var msg = ServerMsg.fromBuffer(val);
       print(msg.writeToJson());
       if (msg.hasLogonResult()) {
@@ -369,7 +364,7 @@ class CQGProxy
           send(SrvcResultType.CONNECTED);
         }
         else {
-          channel.sink.close(WebSocketStatus.normalClosure);
+          channel!.sink.close(WebSocketStatus.normalClosure);
           send(SrvcResultType.CONNECT_FAILED, msg.logonResult.textMessage);
           break; // End loop
         }
@@ -395,19 +390,18 @@ class CQGProxy
     var contract = id2Contract[rpt.contractId];
     var instr = id2Instr[rpt.contractId];
     if (contract == null || instr == null) {
-      log.warning("info for contract not found! ${contract.contractSymbol}");
+      log.warning("info for contract not found!");
       return;
     }
 
-    var quotes = <MarketData>[];
     var key = instr.key;
     var last = symbol2Last[key];
     if (last == null) last = symbol2Last[key] = LastData();
     int received = now();
     int lastTs = received;
     double bid = last.bid, bidSize = last.bidSize, ask = last.ask, askSize = last.askSize;
-    var bidPrices = <double>[], bidSizes = <double>[], askPrices = <double>[], askSizes = <double>[];
-    double high, low, open, settle, prevClose, dayVolume;
+    //var bidPrices = <double>[], bidSizes = <double>[], askPrices = <double>[], askSizes = <double>[];
+    double? high, low, open, settle, prevClose, dayVolume;
 
     for(var q in rpt.quote) {
       int t = q.quoteUtcTime.toInt();
@@ -450,7 +444,7 @@ class CQGProxy
       }
     }
 
-    if (bid != null || ask != null || bidSize != null || askSize != null) {
+    if (bid != 0 || ask != 0 || bidSize != 0 || askSize != 0) {
       post(BidAskUpdate(bid: bid, bidSize: bidSize, ask: ask, askSize: askSize, received: received, key: key));
     }
 

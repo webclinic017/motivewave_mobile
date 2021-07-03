@@ -11,25 +11,25 @@ import 'dart:convert';
 
 class AppState extends ChangeNotifier {
   bool _initialized=false;
-  String _acctId, _wlName;
-  final _activeWatchList = ValueNotifier<WatchList>(null);
+  String? _acctId, _wlName;
+  final _activeWatchList = ValueNotifier<WatchList?>(null);
 
   bool get initialized => _initialized;
 
-  ValueNotifier<WatchList> get activeWatchListValue => _activeWatchList;
+  ValueNotifier<WatchList?> get activeWatchListValue => _activeWatchList;
 
-  WatchList get activeWatchList {
-    if (_activeWatchList.value != null) return _activeWatchList.value;
+  WatchList? get activeWatchList {
+    if (_activeWatchList.value != null) return _activeWatchList.value!;
     var ws = ServiceHome.workspaces.defaultWs;
-    if (ws == null) return null;
-    var wl = ws.watchlists.find(_wlName);
+    if (ws == null || _wlName == null) return null;
+    var wl = ws.watchlists.find(_wlName!);
     if (wl == null) wl = ws.watchlists.all.first;
     _wlName = wl?.name;
     _activeWatchList.value = wl;
     return _activeWatchList.value;
   }
 
-  set activeWatchList(WatchList ws) => _activeWatchList.value = ws;
+  set activeWatchList(WatchList? ws) => _activeWatchList.value = ws;
 
   AppState();
 
@@ -44,9 +44,9 @@ class AppState extends ChangeNotifier {
         "watchList": activeWatchList?.name
       }; // _wlName may have been changed
 
-  Account get activeAccount => ServiceHome.accounts.find(_acctId);
+  Account? get activeAccount =>_acctId == null ? null : ServiceHome.accounts.find(_acctId!);
 
-  set activeAccount(Account acct) {
+  set activeAccount(Account? acct) {
     _acctId = acct?.id;
     notifyListeners();
   }

@@ -62,8 +62,8 @@ class TradingHours {
   String name;
   String label;
   TimeZone timeZone;
-  Map<int, DailyHours> regularHours = {};
-  Map<int, DailyHours> extendedHours = {};
+  Map<int, DailyHours?> regularHours = {};
+  Map<int, DailyHours?> extendedHours = {};
   bool filterEnabled = true;
   List<String> exchanges = [];
   bool weekBeginSaturday=false;
@@ -71,7 +71,7 @@ class TradingHours {
   //BarBuildSettings barBuildSettings;
 
   //private Calendar calendar;
-  bool hasSession2RTH, hasSession2EXT;
+  bool? _hasSession2RTH, _hasSession2EXT;
 
 
   TradingHours(this.name, this.label, this.timeZone);
@@ -79,7 +79,7 @@ class TradingHours {
   void addExchange(String exch) { if (!exchanges.contains(exch)) exchanges.add(exch); }
 
   void addMonFriRegularHours(int startHour, int startMinute, int endHour, int endMinute,
-      [int startHour2=-1, int startMinute2, int endHour2 = -1, int endMinute2])
+      [int startHour2=-1, int startMinute2=-1, int endHour2 = -1, int endMinute2=-1])
   {
     setRegularHours(1, startHour, startMinute, endHour, endMinute, startHour2, startMinute2, endHour2, endMinute2);
     setRegularHours(2, startHour, startMinute, endHour, endMinute, startHour2, startMinute2, endHour2, endMinute2);
@@ -89,7 +89,7 @@ class TradingHours {
   }
 
   void addMonFriExtendedHours(int startHour, int startMinute, int endHour, int endMinute,
-                             [int startHour2=-1, int startMinute2, int endHour2 = -1, int endMinute2])
+                             [int startHour2=-1, int startMinute2=-1, int endHour2 = -1, int endMinute2=-1])
   {
     setExtendedHours(1, startHour, startMinute, endHour, endMinute, startHour2, startMinute2, endHour2, endMinute2);
     setExtendedHours(2, startHour, startMinute, endHour, endMinute, startHour2, startMinute2, endHour2, endMinute2);
@@ -99,7 +99,7 @@ class TradingHours {
   }
 
   void setRegularHours(int dow, int startHour, int startMinute, int endHour, int endMinute,
-      [int startHour2=-1, int startMinute2, int endHour2 = -1, int endMinute2])
+      [int startHour2=-1, int startMinute2=-1, int endHour2 = -1, int endMinute2=-1])
   {
     int start = _toMillis(startHour, startMinute);
     int end = _toMillis(endHour, endMinute);
@@ -110,21 +110,21 @@ class TradingHours {
 
   void setRegularHoursDH(int dow, DailyHours hrs)
   {
-    if (hrs == null || !hrs.enabled) regularHours.remove(dow);
+    if (!hrs.enabled) regularHours.remove(dow);
     else regularHours[dow] = hrs;
-    hasSession2RTH=null;
+    _hasSession2RTH=null;
   }
 
-  DailyHours getRegularHoursByDay(int dow) => regularHours[dow];
+  DailyHours? getRegularHoursByDay(int dow) => regularHours[dow];
 
-  DailyHours getRegularHours(DateTime time) => getHours(time, true);
+  DailyHours? getRegularHours(DateTime time) => getHours(time, true);
 
-  DailyHours getExtendedHoursByDay(int dow) => extendedHours[dow];
+  DailyHours? getExtendedHoursByDay(int dow) => extendedHours[dow];
 
-  DailyHours getExtendedHours(DateTime time) => getHours(time, false);
+  DailyHours? getExtendedHours(DateTime time) => getHours(time, false);
 
   void setExtendedHours(int dow, int startHour, int startMinute, int endHour, int endMinute,
-      [int startHour2=-1, int startMinute2, int endHour2 = -1, int endMinute2])
+      [int startHour2=-1, int startMinute2=-1, int endHour2 = -1, int endMinute2=-1])
   {
     int start = _toMillis(startHour, startMinute);
     int end = _toMillis(endHour, endMinute);
@@ -135,9 +135,9 @@ class TradingHours {
 
   void setExtendedHoursDH(int dow, DailyHours hrs)
   {
-    if (hrs == null || !hrs.enabled) extendedHours[dow] = null;
+    if (!hrs.enabled) extendedHours[dow] = null;
     else extendedHours[dow] = hrs;
-    hasSession2EXT=null;
+    _hasSession2EXT=null;
   }
 
   void clearExtendedHours() { extendedHours.clear(); }
@@ -243,16 +243,16 @@ class TradingHours {
 
   int _toMillis(int hour, int minute) => hour*60*60*1000 + minute*60*1000;
 
-  DailyHours getHours(DateTime time, bool rth)
+  DailyHours? getHours(DateTime time, bool rth)
   {
-    Map<int, DailyHours> map = rth ? regularHours : extendedHours;
+    Map<int, DailyHours?> map = rth ? regularHours : extendedHours;
     int dow = time.weekday;
     var hrs = map[dow];
     // Need to see if the time is within the starting hours of the next day
     var hrs2 = map[dow == 7 ? 1 : dow+1];
     if (hrs == null && hrs2 == null) return null;
     int timeOfDay = time.timeOfDayMillis;
-    if (hrs2 == null) return timeOfDay < hrs.endTime ? hrs : null;
+    if (hrs2 == null) return hrs == null ? null : (timeOfDay < hrs.endTime ? hrs : null);
     if (hrs2.startTime < 0 && timeOfDay - 24*60*60*1000 >= hrs2.startTime) return hrs2;
     return hrs;
   }
@@ -261,10 +261,10 @@ class TradingHours {
 class DailyHours
 {
   int dayOfWeek;
-  int startTime1, endTime1, startTime2 = -1, endTime2 = -1, tradeTime;
+  int startTime1, endTime1, startTime2 = -1, endTime2 = -1, tradeTime=-1;
   bool enabled=true;
 
-  DailyHours(this.dayOfWeek, this.startTime1, this.endTime1, [this.startTime2, this.endTime2, this.enabled])
+  DailyHours(this.dayOfWeek, this.startTime1, this.endTime1, [this.startTime2=-1, this.endTime2=-1, this.enabled=true])
   {
     if (hasSecondaryTime()) tradeTime = (endTime1 - startTime1) + (endTime2 - startTime2);
     else tradeTime = (endTime1 - startTime1);

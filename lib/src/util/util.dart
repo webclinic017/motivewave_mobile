@@ -2,6 +2,7 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:math';
+import 'package:dart_numerics/dart_numerics.dart';
 
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -28,7 +29,7 @@ int now() => DateTime.now().millisecondsSinceEpoch;
 
 bool isDigit(String s, [int idx=0]) => (s.codeUnitAt(idx) ^ 0x30) <= 9;
 
-bool isLetter(String s, [int idx=0]) =>  s == null || idx >= s.length ? false : s[idx].contains(RegExp(r'[a-zA-Z]'));
+bool isLetter(String? s, [int idx=0]) =>  s == null || idx >= s.length ? false : s[idx].contains(RegExp(r'[a-zA-Z]'));
 
 bool isDark(BuildContext ctx) => Theme.of(ctx).brightness == ThemeData.dark().brightness;
 
@@ -55,7 +56,7 @@ bool empty(dynamic val)
   if (val == null) return true;
   if (val is double) return val == 0;
   if (val is int) return val == 0;
-  if (val is String) return val == "";
+  if (val is String) return val.isEmpty;
   if (val is List) return val.length == 0;
   return false;
 }
@@ -67,8 +68,26 @@ void addNotNull(Map<String, dynamic> map, String key, dynamic value)
 
 double roundDouble(double value, int places)
 {
-  double mod = pow(10.0, places);
+  double mod = pow(10.0, places).toDouble();
   return ((value * mod).round().toDouble() / mod);
+}
+
+int roundMinute(int ts)
+{
+  if (ts == int64MinValue) return ts;
+  return (ts/60000).floor()*60000;
+}
+
+int roundMinutes(int ts, int minutes)
+{
+  if (ts == int64MinValue) return ts;
+  return (ts/(minutes*60000)).floor()*(minutes*60000);
+}
+
+int roundSecond(int ts)
+{
+  if (ts == int64MinValue) return ts;
+  return (ts/1000).floor()*1000;
 }
 
 bool of(dynamic val, List<dynamic> vals)
@@ -80,8 +99,7 @@ bool of(dynamic val, List<dynamic> vals)
 // Generic Name-Value Pair.  Dart does not appear to have a class for this.
 class NVP {
   final String key;
-  final Object value;
-
+  final String value;
   NVP(this.key, this.value);
 }
 
@@ -158,7 +176,7 @@ String stripLeading(String s, String chars)
   return s.substring(begin);
 }
 
-String formatMMDDYYYY(DateTime date)
+String formatMMDDYYYY(DateTime? date)
 {
   if (date == null) return "";
   return DateFormat("MM/dd/yyyy").format(date);

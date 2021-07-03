@@ -5,12 +5,12 @@ import 'package:motivewave/src/util/enums.dart';
 class ConnectionID {
   final String id;
   final ServiceType type;
-  Service _service;
+  Service? _service;
 
   // Cannot create directly, use get and getFrom below
   ConnectionID._(this.id, this.type);
 
-  Service get service {
+  Service? get service {
     if (_service != null) return _service;
     for(var srvc in ServiceHome.services) {
       if (srvc.info.id == id) {
@@ -34,17 +34,18 @@ class ConnectionID {
 
   // Gets the existing ID or creates a new one using the name, ID and type
   static ConnectionID get(String id, ServiceType type) {
-    if (id == null || id == "") return null;
-    return getByID(id + "|" + type.asString());
+    return getByID(id + "|" + type.asString())!;
   }
 
   // Gets or creates the connection ID from the ID String
-  static ConnectionID getByID(String idStr) {
+  static ConnectionID? getByID(String? idStr) {
+    if (idStr == null || idStr == "") return null;
     var cid = _directory[idStr];
     if (cid != null) return cid;
     print("getByID: $idStr");
     var tok = idStr.split('|');
-    cid = ConnectionID._(tok[0], tok[1].toEnum(ServiceType.values));
+    if (tok.length < 2) return null;
+    cid = ConnectionID._(tok[0], tok[1].toEnum(ServiceType.values)!);
     _directory[idStr] = cid;
     return cid;
   }

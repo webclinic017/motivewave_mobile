@@ -2,20 +2,20 @@
 // Utility method to convert a string to an enum
 import 'package:motivewave/src/util/util.dart';
 
-T toEnum<T>(String val, List<T> values, [T def])
+T? toEnum<T>(String? val, List<T> values, [T? def])
 {
   if (val == null) return def;
   for(var d in values) {
-    if (d.asString() == val) return d;
+    if (d != null && d.asString() == val) return d;
   }
   return def;
 
 }
 
 extension StringToEnum on String {
-  T toEnum<T>(List<T> list) {
+  T? toEnum<T>(List<T> list) {
     for(var d in list) {
-      if (d.asString() == this) return d;
+      if (d != null && d.asString() == this) return d;
     }
     return null;
   }
@@ -65,7 +65,7 @@ enum InstrumentType {
   // TODO: add others
 }
 
-InstrumentType fromShortCode(String code)
+InstrumentType? fromShortCode(String code)
 {
   if (code == null) return null;
   code = code.trim();
@@ -89,7 +89,7 @@ InstrumentType fromShortCode(String code)
 extension InstrumentTypeExt on InstrumentType {
   bool hasUnderlying() => of(this, [InstrumentType.FUTURE, InstrumentType.OPTION, InstrumentType.CURRENCY_OPTION
     , InstrumentType.FUTURE_OPTION, InstrumentType.INDEX_OPTION, InstrumentType.CUSTOM_CONTINUOUS]);
-  String get shortCode {
+  String? get shortCode {
     switch(this) {
       case InstrumentType.STOCK: return "S";
       case InstrumentType.FUTURE: return "F";

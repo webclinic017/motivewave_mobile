@@ -12,8 +12,8 @@ import 'package:motivewave/src/util/util.dart';
 
 class WatchList implements Destroyable
 {
-  String _name;
-  List<TickerGroup> _groups;
+  String? _name;
+  List<TickerGroup>? _groups;
 
   WatchList(this._name, this._groups);
   WatchList.simple(this._name, List<String> symbols)
@@ -21,8 +21,8 @@ class WatchList implements Destroyable
     _groups = List.unmodifiable([TickerGroup("", symbols)]);
   }
 
-  String get name => _name;
-  List<TickerGroup> get groups => _groups;
+  String get name => _name??"";
+  List<TickerGroup> get groups => _groups??[];
 
   WatchList.fromJSON(Map<String, dynamic> json) {
     _name = json["name"];
@@ -46,7 +46,7 @@ class TickerGroup implements Destroyable
 {
   String _name;
   List<String> _symbols;
-  List<Instrument> _instruments;
+  List<Instrument>? _instruments;
 
   TickerGroup(this._name, List<String> symbols) : _symbols = List.unmodifiable(symbols);
   TickerGroup.fromJSON(Map<String, dynamic> json) : _name = json["name"], _symbols = List.unmodifiable(json["symbols"]);
@@ -55,9 +55,9 @@ class TickerGroup implements Destroyable
   String get name => _name;
   List<Instrument> get instruments
   {
-    if (_instruments != null) return _instruments;
+    if (_instruments != null) return _instruments!;
     var instruments = ServiceHome.workspace?.instruments;
-    if (instruments == null) return null;
+    if (instruments == null) return [];
     // Resolve Instruments.  We may need to roll the instrument if it is expired
     List<Instrument> list = [];
     bool updateSyms = false;
@@ -80,7 +80,7 @@ class TickerGroup implements Destroyable
       for(var i in list) _symbols.add(i.key);
     }
     _instruments = list;
-    return _instruments;
+    return _instruments!;
   }
 
   Map<String, dynamic> toJson() => {"name" : name, "symbols" : symbols};
@@ -140,7 +140,7 @@ class WatchLists extends ChangeNotifier
   void add(WatchList wl)
   {
     if (!_add(wl)) {
-      if (wl != null) log.warning("Instruments::add() instrument already exists: ${wl.name}");
+      log.warning("Instruments::add() instrument already exists: ${wl.name}");
       return;
     }
     _unsavedChanges = true;
@@ -151,7 +151,6 @@ class WatchLists extends ChangeNotifier
   // Note: name is the existing name in the list of watch lists
   void update(WatchList wl, String name)
   {
-    if (wl == null) return;
     _nameMap.remove(name);
     _nameMap[wl.name] = wl;
     _unsavedChanges = true;
@@ -160,7 +159,7 @@ class WatchLists extends ChangeNotifier
 
   void remove(WatchList wl)
   {
-    if (wl == null || !_nameMap.containsKey(wl.name)) return;
+    if (!_nameMap.containsKey(wl.name)) return;
     _nameMap.remove(wl.name);
     _all.remove(wl);
     _unsavedChanges = true;
@@ -169,11 +168,11 @@ class WatchLists extends ChangeNotifier
 
   bool _add(WatchList wl)
   {
-    if (wl == null || _nameMap.containsKey(wl.name)) return false;
+    if (_nameMap.containsKey(wl.name)) return false;
     _nameMap[wl.name] = wl;
     _all.add(wl);
     return true;
   }
 
-  WatchList find(String name) => _nameMap[name];
+  WatchList? find(String name) => _nameMap[name];
 }

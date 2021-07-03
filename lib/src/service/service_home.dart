@@ -1,10 +1,10 @@
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:motivewave/src/service/cqg/cqg_descriptor.dart';
 import 'package:motivewave/src/service/cqg/cqg_service.dart';
 import 'package:motivewave/src/service/service.dart';
 import 'package:motivewave/src/service/service_descriptor.dart';
+import 'package:motivewave/src/service/service_info.dart';
 import 'package:motivewave/src/shared_state/account.dart';
 import 'package:motivewave/src/shared_state/balances.dart';
 import 'package:motivewave/src/shared_state/bar.dart';
@@ -22,45 +22,35 @@ class ServiceHome {
   static final workspaces = Workspaces();
 
   static List<Service> _services = [];
-  static Workspace _workspace;
+  static Workspace? _workspace;
   static Map<ServiceType, ServiceDescriptor> type2Desc = {};
-  static Map<ServiceType, ValueGetter<Service>> type2Factory = {};
+  static Map<ServiceType, Function(Workspace, ServiceInfo, ServiceDescriptor)> type2Factory = {};
 
   static init() {
     log.info("init");
-    _register(CQGDescriptor(), () => CQGService());
+    _register(CQGDescriptor(), (ws, info, desc) => CQGService(ws, info, desc));
   }
 
   static ServiceDescriptor getDescriptor(ServiceType type)
   {
-    return type2Desc[type];
+    return type2Desc[type]!;
   }
 
-  static Service newServiceInstance(ServiceType srvc)
-  {
-    var fact = type2Factory[srvc];
-    if (fact == null) return null; // this should not happen
-    return fact();
-  }
-
-  static set workspace(Workspace ws)
+  static set workspace(Workspace? ws)
   {
     List<Service> list = [];
     if (ws != null) {
       for(var info in ws.connections) {
         var fact = type2Factory[info.conn.type];
         if (fact == null) continue; // this should not happen
-        var srvc = fact();
-        srvc.info = info;
-        srvc.descriptor = type2Desc[info.conn.type];
-        list.add(srvc);
+        list.add(fact(ws, info, type2Desc[info.conn.type]!));
       }
     }
     _services = list;
     _workspace = ws;
   }
 
-  static Workspace get workspace => _workspace;
+  static Workspace? get workspace => _workspace;
 
   static connect(BuildContext ctx)
   {
@@ -70,7 +60,7 @@ class ServiceHome {
   }
 
 
-  static _register(ServiceDescriptor desc, ValueGetter<Service> fact) {
+  static _register(ServiceDescriptor desc, Function(Workspace, ServiceInfo, ServiceDescriptor) fact) {
     type2Desc[desc.type] = desc;
     type2Factory[desc.type] = fact;
   }

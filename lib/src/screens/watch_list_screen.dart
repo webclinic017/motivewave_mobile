@@ -10,11 +10,11 @@ class WatchListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     final appState = ctx.read<AppState>();
-    final watchlists = ServiceHome.workspace.watchlists;
+    final watchlists = ServiceHome.workspace!.watchlists;
     var wl = appState.activeWatchList; // This is necessary to resolve the activeWatchList the first time.
     if (wl == null) print("no watchlist!");
     else print("watch list: ${wl.name}");
-    return ValueListenableBuilder<WatchList>(
+    return ValueListenableBuilder<WatchList?>(
       valueListenable: appState.activeWatchListValue,
       builder: (ctx, watchList, child) {
         return Scaffold(
@@ -31,7 +31,7 @@ class WatchListScreen extends StatelessWidget {
 
           )),
 
-          appBar: AppBar(title: Text(watchList?.name)),
+          appBar: AppBar(title: Text(watchList == null ? "" : watchList.name)),
           body: Container(child: Column(
               mainAxisAlignment: MainAxisAlignment.start,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -44,12 +44,12 @@ class WatchListScreen extends StatelessWidget {
 }
 
 class _WatchList extends StatelessWidget {
-  final WatchList watchList;
+  final WatchList? watchList;
   _WatchList(this.watchList);
 
   @override
   Widget build(BuildContext ctx) {
-    var group = watchList?.groups[0];
+    var group = watchList == null ? TickerGroup("", []) : watchList!.groups[0];
     return ListView.separated(
       separatorBuilder: (ctx, index) => Divider(),
       itemCount: group.instruments.length,

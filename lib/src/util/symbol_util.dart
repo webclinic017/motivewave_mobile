@@ -22,7 +22,7 @@ class SymbolUtil {
   static List<SymMonth> quarterlyMonths() { return [SymMonth.MAR, SymMonth.JUNE, SymMonth.SEPT, SymMonth.DEC ]; }
   static List<SymMonth> allMonths() { return [SymMonth.JAN, SymMonth.FEB, SymMonth.MAR, SymMonth.APR, SymMonth.MAY, SymMonth.JUNE, SymMonth.JULY, SymMonth.AUG, SymMonth.SEPT, SymMonth.OCT, SymMonth.NOV, SymMonth.DEC ]; }
 
-  static String replaceBadCharacters(String src)
+  static String replaceBadCharacters(String? src)
   {
     if (src == null || src == "") return "";
     src = src.replaceAll("/", "");
@@ -86,7 +86,7 @@ class SymbolUtil {
     return isContinuous(instr.symbol, instr.service);
   }
 
-  static bool isContinuous(String symbol, [ServiceType service])
+  static bool isContinuous(String symbol, [ServiceType? service])
   {
     /*
     if (service != null) {
@@ -99,7 +99,7 @@ class SymbolUtil {
     return symbol.startsWith("@");
   }
 
-  static bool is2Year(String symbol)
+  static bool is2Year(String? symbol)
   {
     if (symbol == null || symbol.length < 4) return false;
     if (isDigit(symbol, symbol.length-1) && isDigit(symbol, symbol.length-2) &&
@@ -141,15 +141,15 @@ class SymbolUtil {
 
   static Instrument getNextContract(Instrument instr)
   {
-    if (instr == null || instr.type != InstrumentType.FUTURE || instr.expires == null || isContinuousInstr(instr)) return instr;
-    // No later contracts in the workspace, need to generate one.
-    var srvc = instr.service;
-    if (srvc == null) return instr;
+    if (instr.type != InstrumentType.FUTURE || isContinuousInstr(instr)) return instr;
+    String? base = instr.underlying;
+    DateTime? expires = instr.expires;
+    if (base == null || expires == null) return instr;
 
-    // Is it already in the workspace?
-    String base = instr.underlying;
-    int year = instr.expires.year;
+    // No later contracts in the workspace, need to generate one.
+    int year = expires.year;
     List<InstrumentInfo> fcs = [];
+    var srvc = instr.service;
     if (srvc.isCQG()) {
       fcs.addAll(_generateCQGSymbols(base, year));
       fcs.addAll(_generateCQGSymbols(base, year+1));
@@ -167,16 +167,20 @@ class SymbolUtil {
       fcs.addAll(_generateSymbols(_generators, base, year+1, srvc));
     }
 
-    InstrumentInfo next;
-    List<String> letters = _activeContracts[base];
-    for(int i = 0; i < fcs.length-1; i++) {
+    InstrumentInfo? next;
+    List<String>? letters = _activeContracts[base];
+    if (letters == null) return instr;
+    for (int i = 0; i < fcs.length - 1; i++) {
       var fc = fcs[i];
       if (fc.symbol == instr.symbol) { // Found matching contract
         next = fcs[++i];
         if (!empty(letters)) {
-          while(!letters.contains(next.letter)) {
+          while (!letters.contains(next!.letter)) {
             i++;
-            if (i >= fcs.length) { next = null; break; }
+            if (i >= fcs.length) {
+              next = null;
+              break;
+            }
             next = fcs[i];
           }
         }
@@ -185,7 +189,7 @@ class SymbolUtil {
     }
     if (next == null) {
       log.warning("SymbolUtil::getNextContract() next not found! ${instr.symbol}");
-      return null;
+      return instr;
     }
 
     return next.toInstrument(instr.connectionID);
@@ -226,26 +230,23 @@ class SymbolUtil {
     return symbol.substring(0, 2);
   }
 
-  static String getBaseSymbol(String underlying, String symbol, InstrumentType type, ServiceType from)
+  static String getBaseSymbol(String? underlying, String symbol, InstrumentType type, ServiceType from)
   {
-    String base = getUnderlying(empty(underlying) ? symbol : underlying);
+    String base = getUnderlying(underlying == null || underlying == "" ? symbol : underlying);
     if (!empty(base) && (base.startsWith("@") || base.startsWith("/")) && base.length > 2) {
       base = base.substring(1, 3);
     }
 
-    if (from != null && from.isCQG()) base = convertCQGtoCommon(base);
+    if (from.isCQG()) base = convertCQGtoCommon(base);
     return base;
   }
 
-  static DateTime getExpiryDate(String underlying, String symbol, ServiceType src)
+  static DateTime? getExpiryDate(String? underlying, String symbol, ServiceType src)
   {
-    if (symbol == "ESM21") {
-      print("here!");
-    }
-    underlying = getUnderlying(underlying);
-    SymbolGenerator gen;
-    if (src != null && src.isCQG()) gen=_cqgGenerators[underlying];
-    else if (src != null && src.isRithmic()) gen=_rithmicGenerators[underlying];
+    underlying = getUnderlying(underlying == null ? symbol : underlying);
+    SymbolGenerator? gen;
+    if (src.isCQG()) gen=_cqgGenerators[underlying];
+    else if (src.isRithmic()) gen=_rithmicGenerators[underlying];
     else if (src == ServiceType.BARCHART) gen=_bcGenerators[underlying];
     else gen=_generators[underlying];
 
@@ -369,7 +370,7 @@ class SymbolUtil {
     return base;
   }
 
-  static String getFutureTradingHours(String base, ServiceType srvc)
+  static String? getFutureTradingHours(String base, ServiceType? srvc)
   {
     if (empty(base)) return null;
     if (base.indexOf('#') > 0) {
@@ -428,14 +429,14 @@ class SymbolUtil {
 
   static String convertSymbolInstr(Instrument instr, ServiceType from, ServiceType to)
   {
-    if (from == null) return instr.symbol;
+    //if (from == null) return instr.symbol;
     return convertSymbol(instr.underlying, instr.symbol, instr.type, instr.expires, from, to);
   }
 
 
-  static String convertSymbol(String underlying, String symbol, InstrumentType type, DateTime expDate, ServiceType from, ServiceType to)
+  static String convertSymbol(String? underlying, String symbol, InstrumentType type, DateTime? expDate, ServiceType from, ServiceType to)
   {
-    if (from == null || to == null) return symbol;
+    //if (from == null || to == null) return symbol;
 
     if (type == InstrumentType.FOREX) {
       // convert to a common base symbol, then to the target service
@@ -616,7 +617,7 @@ class SymbolUtil {
     return 0.01;
   }
 
-  static String getCryptoDesc(String symbol)
+  static String? getCryptoDesc(String symbol)
   {
     symbol = symbol.trim();
     symbol = symbol.replaceAll("/", "");
@@ -720,7 +721,7 @@ class SymbolUtil {
     return null;
   }
 
-  static String resolveCQGExchange(String underlying)
+  static String? resolveCQGExchange(String underlying)
   {
     var gen =_cqgGenerators[underlying];
     return gen == null ? null : gen.exchange;
@@ -741,7 +742,7 @@ class SymbolUtil {
 
       // Remove any expired symbols
     for (var f in [...symbols]) {
-      if (f.expires.isBefore(now)) symbols.remove(f);
+      if (f.expires != null && f.expires!.isBefore(now)) symbols.remove(f);
     }
     return symbols;
   }
@@ -761,7 +762,7 @@ class SymbolUtil {
 
     // Remove any expired symbols
     for (var f in [...symbols]) {
-      if (f.expires.isBefore(now)) symbols.remove(f);
+      if (f.expires != null && f.expires!.isBefore(now)) symbols.remove(f);
     }
     return symbols;
   }
@@ -875,36 +876,36 @@ class SymbolUtil {
       if (Holidays.isWeekendOrHoliday(cal)) continue;
       if (cal.weekday == dow) return cal;
     }
-    return null; // This should not happen
+    return cal; // This should not happen
   }
 
-  static void currency(String base, String exch, double mt, double dm, double pv, String desc, ExpBuilder exp, String bc, String rithmic, String cqg)
+  static void currency(String base, String exch, double mt, double dm, double pv, String desc, ExpBuilder exp, String? bc, String? rithmic, String? cqg)
   {
     gen(base, bc, rithmic, cqg, exch, mt, dm, pv, desc, FuturesCategory.CURRENCY, exp, quarterlyMonths());
   }
 
-  static void equity(String base, String exch, double mt, double pv, String desc, String bc, String rithmic, String cqg)
+  static void equity(String base, String exch, double mt, double pv, String desc, String? bc, String? rithmic, String? cqg)
   {
     gen(base, bc, rithmic, cqg, exch, mt, 1, pv, desc, FuturesCategory.INDEX, DOW(3, 5), quarterlyMonths());
   }
 
-  static void energy(String base, String exch, double mt, double pv, String desc, ExpBuilder exp, String bc, String rithmic, String cqg)
+  static void energy(String base, String exch, double mt, double pv, String desc, ExpBuilder exp, String? bc, String? rithmic, String? cqg)
   {
     gen(base, bc, rithmic, cqg, exch, mt, 1, pv, desc, FuturesCategory.ENERGY, exp, allMonths());
   }
 
-  static void treasury(String base, String exch, double mt, double pv, String desc, ExpBuilder exp, String bc, String rithmic, String cqg)
+  static void treasury(String base, String exch, double mt, double pv, String desc, ExpBuilder exp, String? bc, String? rithmic, String? cqg)
   {
     gen(base, bc, rithmic, cqg, exch, mt, 1, pv, desc, FuturesCategory.FINANCIAL, exp, quarterlyMonths());
   }
 
-  static void gen(String base, String bc, String rithmic, String cqg, String exch, double mt, double dm, double pv, String desc, FuturesCategory cat, ExpBuilder exp, List<SymMonth> codes)
+  static void gen(String base, String? bc, String? rithmic, String? cqg, String exch, double mt, double dm, double pv, String desc, FuturesCategory cat, ExpBuilder exp, List<SymMonth> codes)
   {
     var gen = SymbolGenerator(null, base, exch, mt, dm, pv, desc, cat, exp, codes);
     _generators[gen.base] = gen;
-    if (!empty(bc)) _bcGenerators[bc] = SymbolGenerator.clone(gen, service: ServiceType.BARCHART, base: bc);
-    if (!empty(rithmic)) _rithmicGenerators[rithmic] = SymbolGenerator.clone(gen, service: ServiceType.RITHMIC, base: rithmic);
-    if (!empty(cqg)) _cqgGenerators[cqg] = SymbolGenerator.clone(gen, service: ServiceType.CQG, base: cqg);
+    if (bc != null && bc != "") _bcGenerators[bc] = SymbolGenerator.clone(gen, service: ServiceType.BARCHART, base: bc);
+    if (rithmic != null && rithmic != "") _rithmicGenerators[rithmic] = SymbolGenerator.clone(gen, service: ServiceType.RITHMIC, base: rithmic);
+    if (cqg != null && cqg != "") _cqgGenerators[cqg] = SymbolGenerator.clone(gen, service: ServiceType.CQG, base: cqg);
   }
 
   static void active(List<String> baseSymbols, List<String> contractLetters)
@@ -1045,16 +1046,16 @@ class SymbolUtil {
 
 class SymbolGenerator
 {
-  String base, exchange, displayMask, title;
+  String base, exchange, displayMask="", title;
   double minTick, pointValue=1, displayMagnifier;
   FuturesCategory category;
   ExpBuilder exp;
   List<SymMonth> months;
-  ServiceType srvc;
+  ServiceType? srvc;
 
   SymbolGenerator(this.srvc, this.base, this.exchange, this.minTick, this.displayMagnifier, this.pointValue, this.title, this.category, this.exp, this.months);
 
-  SymbolGenerator.clone(SymbolGenerator gen, {ServiceType service, String base, double minTick, double pointValue})
+  SymbolGenerator.clone(SymbolGenerator gen, {ServiceType? service, String? base, double? minTick, double? pointValue})
       : this(service ?? gen.srvc, base ?? gen.base, gen.exchange, minTick ?? gen.minTick, gen.displayMagnifier,
              pointValue ?? gen.pointValue, gen.title, gen.category, gen.exp, gen.months);
 

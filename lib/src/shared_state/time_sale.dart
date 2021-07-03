@@ -13,17 +13,17 @@ class TimeAndSale
 
   TimeAndSale(this.ticker, this.time, this.price, this.size);
 
-  double get bid => null;
-  double get bidSize => null;
-  double get ask => null;
-  double get askSize => null;
+  double get bid => 0;
+  double get bidSize => 0;
+  double get ask => 0;
+  double get askSize => 0;
 
-  int get orderId => null;
-  int get aggOrderId => null;
+  int get orderId => 0;
+  int get aggOrderId => 0;
 
-  bool get atAsk => null;
+  bool get atAsk => false;
 
-  String get exchange => null;
+  String get exchange => "";
 }
 
 class BidAskTimeAndSale extends TimeAndSale

@@ -26,7 +26,8 @@ class CSV {
     for(var key in map.keys) {
       if (first) first = false;
       else out.write(',');
-      String id = map[key];
+      String? id = map[key];
+      if (id == null) id = "";
       write(id + "=" + key, out);
     }
     out.writeln();
@@ -34,7 +35,7 @@ class CSV {
 
   Map<String, String> readMap(String line)
   {
-    if (line.indexOf('=') < 0) return null; // no mapping
+    if (line.indexOf('=') < 0) return {}; // no mapping
     Map<String, String> map = {};
     List<String> tok = parse(line);
     for(String nvp in tok) {
@@ -137,36 +138,46 @@ class CSV {
     return result;
   }
 
-  String str(String key, Map<String, String> map) { return empty(key) ? null : _resolve(key, map); }
-  DateTime date(String val) { return empty(val) ? null : DateTime.fromMillisecondsSinceEpoch(toInt(val)); }
+  String? str(String? key, Map<String, String> map) { return empty(key) ? null : _resolve(key, map); }
+  DateTime? date(String? val) {
+    if (empty(val)) return null;
+    int? ts = toInt(val);
+    if (ts == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(ts);
+  }
 
-  String _resolve(String val, Map<String, String> map)
+  String? _resolve(String? val, Map<String, String> map)
   {
-    if (map == null || map.isEmpty) return val;
+    if (map.isEmpty) return val;
     if (empty(val)) return null;
     if (map.containsKey(val)) return map[val];
     return val;
   }
 
-  int map(String val, Map<String, String> map, int counter)
+  int map(String? val, Map<String, String> map, int counter)
   {
-    if (empty(val) || map.containsKey(val)) return counter;
+    if (val == null || val == "" || map.containsKey(val)) return counter;
     map[val] = counter.toRadixString(32);
     counter++;
     return counter;
   }
 
-  int toInt(String val)
+  int toInt(String? val)
   {
-    if (empty(val)) return 0;
-    if (val.startsWith("-")) return int.tryParse(val);
-    return int.tryParse(val, radix: 32);
+    if (val == null || val == "") return 0;
+    if (val.startsWith("-")) {
+      int ? v = int.tryParse(val);
+      return v == null ? 0 : v;
+    }
+    int? v = int.tryParse(val, radix: 32);
+    return v == null ? 0 : v;
   }
 
-  double toDouble(String val)
+  double toDouble(String? val)
   {
-    if (empty(val)) return 0;
-    return double.tryParse(val);
+    if (val == null || val == "") return 0;
+    double? v = double.tryParse(val);
+    return v == null ? 0 : v;
   }
 
   static bool _isCSVNoQuotes(String s)

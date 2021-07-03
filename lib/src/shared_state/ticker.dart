@@ -1,10 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:motivewave/src/shared_state/bar.dart';
+import 'package:motivewave/src/shared_state/bar_size.dart';
 import 'package:motivewave/src/shared_state/instrument.dart';
 import 'package:motivewave/src/shared_state/time_sale.dart';
 import 'package:motivewave/src/shared_state/workspace.dart';
 import 'package:motivewave/src/util/destroyable.dart';
 import 'package:motivewave/src/util/observable.dart';
+import 'package:motivewave/src/util/util.dart';
 
 class Ticker implements Destroyable {
 
@@ -18,6 +20,7 @@ class Ticker implements Destroyable {
   Observable<int> openInterest = Observable(), lastTime = Observable();
   Observable<DateTime> dividendDate = Observable();
   Observable<String> lastExchange = Observable();
+  Observable<TimeAndSale> lastTimeAndSale = Observable();
 
   final Instrument instrument;
   List _observers = [];
@@ -30,7 +33,16 @@ class Ticker implements Destroyable {
   void record(TimeAndSale ts)
   {
     timeSaleHistory.add(ts);
+    var bar = minuteBars.isEmpty ? null : minuteBars.last;
+    if (bar == null || ts.time >= bar.endTime) {
+      if (bar != null) bar.complete = true;
+      minuteBars.add(Bar.fromTS(BarSize.minute(1), roundMinute(ts.time), ts));
+    }
+    else bar.update(ts);
 
+    // TODO: update the daily volume profile(s)
+
+    lastTimeAndSale.update(ts);
   }
 
   // These methods keep track of the observers of this ticker.
@@ -38,14 +50,13 @@ class Ticker implements Destroyable {
   // When the last observer is removed, the subscription is cancelled.
   void addObserver(Object o)
   {
-    if (o == null) return;
     bool wasEmpty = _observers.isEmpty;
     if (!_observers.contains(o)) _observers.add(o);
     if (wasEmpty) {
       var srvc = instrument.connectionID.service;
-      srvc.beginUpdate();
-      srvc.subscribeL1(this);
-      srvc.endUpdate();
+      srvc!.beginUpdate();
+      srvc!.subscribeL1(this);
+      srvc!.endUpdate();
     }
   }
 
@@ -57,9 +68,9 @@ class Ticker implements Destroyable {
       Future.delayed(Duration(seconds: 10), () {
         if (_observers.isEmpty) {
           var srvc = instrument.connectionID.service;
-          srvc.beginUpdate();
-          srvc.unsubscribeL1(this);
-          srvc.endUpdate();
+          srvc!.beginUpdate();
+          srvc!.unsubscribeL1(this);
+          srvc!.endUpdate();
         }
       });
     }
@@ -79,7 +90,7 @@ class Tickers
 
   Tickers(this._workspace);
 
-  Ticker findByKey(String key) => _keyMap[key];
+  Ticker? findByKey(String key) => _keyMap[key];
 
   Ticker get(Instrument instr)
   {

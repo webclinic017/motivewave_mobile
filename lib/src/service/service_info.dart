@@ -6,12 +6,12 @@ import 'package:motivewave/src/util/enums.dart';
 class ServiceInfo {
 
   String id = newId();
-  ConnectionInfo conn;
+  late final ConnectionInfo conn;
 
   ServiceInfo(this.conn);
   ServiceInfo.fromJson(Map<String, dynamic> json) {
     id = json["id"];
-    if (json.containsKey("conn")) conn = ConnectionInfo.fromJson(json["conn"]);
+    conn = ConnectionInfo.fromJson(json["conn"]);
   }
 
   ConnectionID get connectionID => ConnectionID.get(id, conn.type);

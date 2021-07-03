@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   final Service service;
-  LoginScreen(this.service, {Key key}) : super(key: key);
+  LoginScreen(this.service, {Key? key}) : super(key: key);
 
   @override
   _LoginScreenState createState() => _LoginScreenState();
@@ -35,7 +35,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
 class LoginForm extends StatefulWidget {
   final Service service;
-  const LoginForm(this.service, {Key key}) : super(key: key);
+  const LoginForm(this.service, {Key? key}) : super(key: key);
 
   @override
   LoginFormState createState() => LoginFormState();
@@ -46,7 +46,7 @@ class LoginFormState extends State<LoginForm> {
   final _formKey = GlobalKey<FormState>();
   final _loginIdCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  Object _connection;
+  String? _connection;
 
   @override
   void dispose()
@@ -57,7 +57,8 @@ class LoginFormState extends State<LoginForm> {
   }
 
   _connect() async {
-    if (!_formKey.currentState.validate()) return;
+    var state = _formKey.currentState;
+    if (state == null || !state.validate()) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Connecting')));
     print("Calling Connect");
     var result = await widget.service.doConnect(Credentials(username: _loginIdCtrl.text, password: _passwordCtrl.text, connection: _connection));
@@ -67,7 +68,7 @@ class LoginFormState extends State<LoginForm> {
       Navigator.pushReplacementNamed(context, '/watchlist');
     }
     else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message ??"")));
     }
   }
 
@@ -81,7 +82,7 @@ class LoginFormState extends State<LoginForm> {
       fields.add(TextFormField(
         controller: _loginIdCtrl,
         validator: (value) {
-          if (value.isEmpty) return 'Enter Login ID';
+          if (empty(value)) return 'Enter Login ID';
           return null;
         },
         decoration: InputDecoration(hintText: "Login ID")));
@@ -91,18 +92,18 @@ class LoginFormState extends State<LoginForm> {
         controller: _passwordCtrl,
         obscureText: true,
         validator: (value) {
-          if (value.isEmpty) return 'Enter Password';
+          if (empty(value)) return 'Enter Password';
           return null;
         },
         decoration: InputDecoration(hintText: "Password"),
       ));
     }
     if (desc.supportsConnectionChoice) {
-      List<DropdownMenuItem> items = [];
+      List<DropdownMenuItem<String>> items = [];
       for(var nvp in desc.connections) {
         items.add(DropdownMenuItem(child: Text(nvp.key), value: nvp.value));
       }
-      fields.add(DropdownButton(
+      fields.add(DropdownButton<String?>(
         value: _connection,
         items: items,
         onChanged: (value) => setState(() { _connection = value; })));

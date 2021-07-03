@@ -11,19 +11,16 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
 
-import 'package:provider/provider.dart';
-
-
 class Workspace {
 
   final String name; // Workspace name, this must be unique for the user
-  final List<ServiceInfo> connections;
+  late final List<ServiceInfo> connections;
   final String wsBucket; // Name of the bucket in the cloud.  If this is empty the the workspace is local
-  Workspaces workspaces; // reference to the workspaces directory
-  Exchanges exchanges;
-  Instruments instruments;
-  WatchLists watchlists;
-  Tickers tickers;
+  late final Workspaces workspaces; // reference to the workspaces directory
+  late final Exchanges exchanges;
+  late final Instruments instruments;
+  late final WatchLists watchlists;
+  late final Tickers tickers;
 
   void _init() {
     exchanges = Exchanges(this);
@@ -34,10 +31,11 @@ class Workspace {
 
   Workspace(this.name, this.wsBucket, this.connections) { _init(); }
 
-  Workspace.fromJson(Map<String, dynamic> json) : name=json["name"], wsBucket=json["wsBucket"],
-        connections=(json['connections'] as List)?.map((e) => e == null ? null : ServiceInfo.fromJson(e as Map<String, dynamic>))?.toList()
+  Workspace.fromJson(Map<String, dynamic> json)
+      : name=json["name"], wsBucket=json["wsBucket"]
   {
     _init();
+    connections= (json['connections'] as List)?.map((e) => ServiceInfo.fromJson(e as Map<String, dynamic>))?.toList() ?? [];
   }
 
   Map<String, dynamic> toJson() => {
@@ -113,27 +111,27 @@ class Workspace {
 
 // Maintains a directory for workspaces
 class Workspaces extends ChangeNotifier {
-  Directory _wsDir;
+  Directory? _wsDir;
   List<Workspace> _workspaces = [];
   Map<String, Workspace> _nameMap = {};
   bool _initialized = false;
-  final _defaultWs = ValueNotifier<Workspace>(null);
+  final _defaultWs = ValueNotifier<Workspace?>(null);
 
 
   bool get initialized => _initialized;
   void init() { _initialized = true; }
 
-  ValueNotifier<Workspace> get defaultWsValue => _defaultWs;
-  Workspace get defaultWs => _defaultWs.value;
-  set defaultWs(Workspace ws) => _defaultWs.value = ws;
+  ValueNotifier<Workspace?> get defaultWsValue => _defaultWs;
+  Workspace? get defaultWs => _defaultWs.value;
+  set defaultWs(Workspace? ws) => _defaultWs.value = ws;
 
   // Gets the workspaces directory.  If it does not exist, it will be created
   Future<Directory> get workspacesDir async  {
-    if (_wsDir != null) return _wsDir;
+    if (_wsDir != null) return _wsDir!;
     final dir = await getApplicationDocumentsDirectory();
     _wsDir = Directory(dir.path + '/workspaces');
-    if (!_wsDir.existsSync()) _wsDir.createSync();
-    return _wsDir;
+    if (!_wsDir!.existsSync()) _wsDir!.createSync();
+    return _wsDir!;
   }
 
   // returns a copy of the workspaces list
@@ -147,7 +145,7 @@ class Workspaces extends ChangeNotifier {
 
   void remove(Workspace ws)
   {
-    if (ws == null || !_nameMap.containsKey(ws.name)) return;
+    if (!_nameMap.containsKey(ws.name)) return;
     _nameMap.remove(ws.name);
     _workspaces.remove(ws);
     if (defaultWs == ws) _defaultWs.value = null;
@@ -162,7 +160,6 @@ class Workspaces extends ChangeNotifier {
 
   void _add(Workspace ws)
   {
-    if (ws == null) return;
     if (_nameMap.containsKey(ws.name)) {
       print("Workspaces::load() duplicate workspace: ${ws.name} ignoring.");
       return;
@@ -180,7 +177,7 @@ class Workspaces extends ChangeNotifier {
     print("loading workspaces");
     _nameMap = {};
     _workspaces = [];
-    Workspace defWs;
+    Workspace? defWs;
     if (f.existsSync()) {
       var c = await f.readAsString();
       Map<String, dynamic> map = json.decode(c);
@@ -213,6 +210,6 @@ class Workspaces extends ChangeNotifier {
     var f = File(d.path + '/workspaces.json');
     print("saving workspaces: ${f.absolute.path} count: ${_workspaces.length}");
     await f.writeAsString(json.encode({ "default": defaultWs?.name, "workspaces": _workspaces}));
-    if (defaultWs != null) defaultWs.save();
+    if (defaultWs != null) defaultWs!.save();
   }
 }
