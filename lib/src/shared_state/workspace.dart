@@ -35,7 +35,13 @@ class Workspace {
       : name=json["name"], wsBucket=json["wsBucket"]
   {
     _init();
-    connections= (json['connections'] as List)?.map((e) => ServiceInfo.fromJson(e as Map<String, dynamic>))?.toList() ?? [];
+    var conns = <ServiceInfo>[];
+    if (json.containsKey('connections')) {
+      for(var j in json['connections'] as List) {
+        conns.add(ServiceInfo.fromJson(j));
+      }
+    }
+    connections= conns;
   }
 
   Map<String, dynamic> toJson() => {

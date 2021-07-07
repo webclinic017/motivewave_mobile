@@ -15,7 +15,8 @@ import 'package:motivewave/src/util/extensions.dart';
 class Instrument {
   String _symbol;
   String? underlying, _exchange, currency, displayMask, title, description, notes,
-         sectorId, industryGroupId, tradingHoursID;
+         sectorId, industryGroupId, tradingHoursID, letter;
+  FuturesCategory? category;
   DateTime? expires;
   InstrumentType type;
   OptionType? optionType;
@@ -82,7 +83,7 @@ class Instrument {
     if (_places == -1000 ) _places = getDecimalPlaces(tick);
     int p = _places;
 
-    if (displayMultiplier != null) {
+    if (displayMultiplier != 0) {
       if (displayMultiplier > 0.0000001) {
         price *= displayMultiplier;
       }
@@ -130,6 +131,15 @@ class Instrument {
       return number.round().toString() + " " + (fraction*256.0).round().toString() + "/8";
     }
     return price.toStringAsFixed(p);
+  }
+
+  InstrumentInfo toInfo()
+  {
+    return InstrumentInfo(underlying: underlying, symbol: symbol, exchange: exchange, title: title, description: description,
+        currency: currency, letter: letter, displayMask: displayMask,
+        sectorId: sectorId, industryGroupId: industryGroupId, expires: expires, minTick: minTick,
+        displayMultiplier: displayMultiplier, pointValue: pointValue, strikePrice: strikePrice,
+        serviceType: service, type: type, category: category);
   }
 
   static String genKey(String symbol, String? exchange, ServiceType? service)

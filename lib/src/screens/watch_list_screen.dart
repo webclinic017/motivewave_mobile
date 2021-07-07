@@ -3,6 +3,7 @@ import 'package:motivewave/src/service/service_home.dart';
 import 'package:motivewave/src/shared_state/account.dart';
 import 'package:motivewave/src/shared_state/app_state.dart';
 import 'package:motivewave/src/shared_state/watchlist.dart';
+import 'package:motivewave/src/widgets/ticker_card.dart';
 import 'package:provider/provider.dart';
 
 class WatchListScreen extends StatelessWidget {
@@ -50,12 +51,12 @@ class _WatchList extends StatelessWidget {
   @override
   Widget build(BuildContext ctx) {
     var group = watchList == null ? TickerGroup("", []) : watchList!.groups[0];
-    return ListView.separated(
-      separatorBuilder: (ctx, index) => Divider(),
-      itemCount: group.instruments.length,
+    var tickers = ServiceHome.workspace!.tickers;
+    return ListView.builder(
+      itemCount: group.tickers.length,
       itemBuilder: (ctx, index) => ListTile(
-        title: Text(group.instruments[index].symbol),
-      ),
+        title: TickerCard(group.tickers[index])
+      )
     );
   }
 }

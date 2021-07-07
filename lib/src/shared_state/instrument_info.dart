@@ -37,7 +37,7 @@ class InstrumentInfo
     expires = new Date(e);
   }*/
 
-  bool get expired => expires != null && expires!.isAfter(DateTime.now());
+  bool get expired => expires != null && expires!.isBefore(DateTime.now());
 
   int get expiresMillis => expires == null ? 0 : expires!.millisecondsSinceEpoch;
 
@@ -69,6 +69,8 @@ class InstrumentInfo
       if (!empty(displayMultiplier) && displayMultiplier != instr.displayMultiplier) { instr.displayMultiplier = displayMultiplier; modified = true; }
       if (!empty(displayMask) && displayMask != instr.displayMask) { instr.displayMask = displayMask; modified = true; }
       if (!empty(description) && description != instr.description) { instr.description = description; modified = true; }
+      if (instr.letter != letter) { instr.letter = letter; modified = true; }
+      if (instr.category != category) { instr.category = category; modified = true; }
 
       if (!modified) return;
       var instruments = ServiceHome.workspace?.instruments;

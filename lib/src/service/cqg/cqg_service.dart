@@ -48,7 +48,7 @@ void cqgIsolate(SendPort out)
   input.listen((data) {
     if (!(data is SrvcMessage)) return;
     SrvcMessage msg = data;
-    print("cqgIsolate() message: ${msg.type}");
+    //print("cqgIsolate() message: ${msg.type}");
     switch(msg.type) {
       case SrvcMsgType.SERVICE_TYPE: proxy.srvcType = msg.params; break;
       case SrvcMsgType.CONNECT: proxy.connect(msg.params); break;
@@ -103,7 +103,7 @@ class CQGProxy
 
   void connect(Credentials c) async
   {
-    print("connect: ${c.username} ${c.password}");
+    //("connect: ${c.username} ${c.password}");
 
     var url = LIVE_HOST_URI;
     if (c.connection == "DEMO") url = DEMO_HOST_URI;
@@ -159,6 +159,7 @@ class CQGProxy
     for(var tkr in l2Removed) {
       await updateSubscription(tkr, MarketDataSubscription_Level.TRADES_BBA_VOLUMES.value, msg);
     }
+    //("sending market data message $msg");
     sendMsg(msg);
   }
 
@@ -167,12 +168,12 @@ class CQGProxy
     String symbol = instr.symbol.toUpperCase();
     var contract = await resolveContract(symbol);
     if (contract == null) {
-      log.warning("CQGService::updateSubscription() contract not found: " + symbol);
+      print("CQGService::updateSubscription() contract not found: $symbol");
       return;
     }
     updateInformation(instr); // Make sure the min tick, point value and expiry date are correct
     if (instr.expired) {
-      log.warning("CQGProxy::updateSubscription() instrument is expired: ${instr.symbol}");
+      print("CQGProxy::updateSubscription() instrument is expired: ${instr.symbol}");
       return;
     }
 
@@ -322,9 +323,12 @@ class CQGProxy
     req2InfoRpt[reqId] = sync;
     sendMsg(ClientMsg(informationRequest: [InformationRequest(id: reqId, symbolResolutionRequest: SymbolResolutionRequest(symbol: symbol))]));
     try {
-      var rpt = await sync.future.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
-      if (sync.isCompleted && rpt.hasContractMetadataReport()) {
-        _register(rpt.contractMetadataReport.contractMetadata);
+      var rpt = await sync.future; //.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
+      if (sync.isCompleted && rpt.hasSymbolResolutionReport()) {
+        _register(rpt.symbolResolutionReport.contractMetadata);
+      }
+      else {
+        print("contract not found!");
       }
     }
     catch(te) {
@@ -355,7 +359,7 @@ class CQGProxy
     if (channel == null) return;
     await for (var val in channel!.stream) {
       var msg = ServerMsg.fromBuffer(val);
-      print(msg.writeToJson());
+      //print(msg.writeToJson());
       if (msg.hasLogonResult()) {
         var base = DateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(msg.logonResult.baseTime, true);
         baseTime = base.millisecondsSinceEpoch;
@@ -370,7 +374,6 @@ class CQGProxy
         }
       }
       if (msg.hasPing()) { // Heartbeat
-        print("sending pong");
         sendMsg(ClientMsg(pong: Pong(pingUtcTime: msg.ping.pingUtcTime, token: msg.ping.token, pongUtcTime: Int64(now()))));
       }
       if (msg.informationReport.length > 0) {

@@ -54,8 +54,10 @@ class Service {
       connected = false;
       var res = await doConnect(Credentials());
       if (res.success) {
-        connected = true;
         onConnected();
+      }
+      else {
+        print("not connected! ${res.message}");
       }
     }
   }
@@ -72,7 +74,7 @@ class Service {
     }
     var p = msg.params;
 
-    print("service::onMessage() ${msg.type} ${msg.params}");
+    //print("service::onMessage() ${msg.type} ${msg.params}");
     switch(msg.type) {
       case SrvcResultType.CONNECTED:
         completer.complete(ConnectResult(true)); break;
@@ -89,24 +91,25 @@ class Service {
         ServiceHome.balances.update(balances, info.connectionID);
         break;
       case SrvcResultType.REQUEST_INSTR: // Request to resolve an instrument
-        String symbol = p[0];
-        String exch = p.length > 1 ? p[1] : null;
-        String key = Instrument.genKey(symbol, exch, type);
-        send(SrvcMsgType.RETURN_INSTR, [symbol, exch, workspace.instruments.findByKey(key)]);
+        String symbol = msg.params;
+        //String exch = p.length > 1 ? p[1] : null;
+        String key = Instrument.genKey(symbol, null, type);
+        var instr = workspace.instruments.findByKey(key);
+        send(SrvcMsgType.RETURN_INSTR, [symbol, null, instr?.toInfo()]);
         break;
       case SrvcResultType.UPDATE_INSTR: // Request to resolve an instrument
-        InstrumentInfo info = p[0];
+        InstrumentInfo? info = msg.params;
         if (info != null) info.updateOrCreate(info.connectionID);
         break;
       case SrvcResultType.MARKET_DATA:
-        onMarketData(p[0]);
+        onMarketData(p);
         break;
     }
   }
 
   void onMarketData(MarketData md)
   {
-    var tkr = workspace.tickers.findByKey(md.key);
+    var tkr = workspace.tickers.byKey(md.key);
     if (tkr == null) {
       log.warning("onMarketData() ticker not found! ${md.key}");
       return;
@@ -127,6 +130,7 @@ class Service {
   void onConnected()
   {
     print("onConnected");
+    connected = true;
     subscribeAll();
     reqAccounts();
     reqBalances();
@@ -185,7 +189,7 @@ class Service {
     _pendingUpdates--;
     if (_pendingUpdates > 0) return;
     _pendingUpdates = 0;
-    if (!connected) return; //|| isDisconnectInProgress() || ServiceHome.isShutdownInProgress()) return;
+    if (!connected) { print("endUpdate::not connected!"); return; }
 
     // Determine what has changed
     var level1 = [...level1List];
@@ -232,9 +236,16 @@ class Service {
 
   void _subscribe(List<Ticker> l1Added, List<Ticker> l1Removed, List<Ticker> l2Added, List<Ticker> l2Removed)
   {
-    send(SrvcMsgType.SUBSCRIBE, [l1Added, l1Removed, l2Added, l2Removed]);
+    // Convert Ticker to InstrumentInfo
+    send(SrvcMsgType.SUBSCRIBE, [_toInfoList(l1Added), _toInfoList(l1Removed), _toInfoList(l2Added), _toInfoList(l2Removed)]);
   }
 
+  List<InstrumentInfo> _toInfoList(List<Ticker> tickers)
+  {
+    var infos = <InstrumentInfo>[];
+    for(var tkr in tickers) infos.add(tkr.instrument.toInfo());
+    return infos;
+  }
 }
 
 enum SrvcMsgType {

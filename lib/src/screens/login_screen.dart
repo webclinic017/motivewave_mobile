@@ -44,8 +44,8 @@ class LoginForm extends StatefulWidget {
 class LoginFormState extends State<LoginForm> {
   // This key uniquely identifies the Form widget and allows validation of the form.
   final _formKey = GlobalKey<FormState>();
-  final _loginIdCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
+  final _loginIdCtrl = TextEditingController(text: "motivewaveapi");
+  final _passwordCtrl = TextEditingController(text: "pass");
   String? _connection;
 
   @override
@@ -63,7 +63,6 @@ class LoginFormState extends State<LoginForm> {
     print("Calling Connect");
     var result = await widget.service.doConnect(Credentials(username: _loginIdCtrl.text, password: _passwordCtrl.text, connection: _connection));
     if (result.success) {
-      print("calling onConnected");
       widget.service.onConnected();
       Navigator.pushReplacementNamed(context, '/watchlist');
     }

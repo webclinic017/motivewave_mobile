@@ -10,7 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'dart:convert';
 
 class AppState extends ChangeNotifier {
-  bool _initialized=false;
+  bool _initialized = false;
   String? _acctId, _wlName;
   final _activeWatchList = ValueNotifier<WatchList?>(null);
 
@@ -24,12 +24,17 @@ class AppState extends ChangeNotifier {
     if (ws == null || _wlName == null) return null;
     var wl = ws.watchlists.find(_wlName!);
     if (wl == null) wl = ws.watchlists.all.first;
-    _wlName = wl?.name;
-    _activeWatchList.value = wl;
+    _wlName = wl.name;
+    activeWatchList = wl;
     return _activeWatchList.value;
   }
 
-  set activeWatchList(WatchList? ws) => _activeWatchList.value = ws;
+  set activeWatchList(WatchList? ws) {
+    _activeWatchList.value?.unsubscribe();
+    print("subscribing");
+    ws?.subscribe();
+    _activeWatchList.value = ws;
+  }
 
   AppState();
 
@@ -38,30 +43,28 @@ class AppState extends ChangeNotifier {
     _wlName = json["watchList"];
   }
 
-  Map<String, dynamic> toJson() =>
-      {
+  Map<String, dynamic> toJson() => {
         "account": _acctId,
         "watchList": activeWatchList?.name
       }; // _wlName may have been changed
 
-  Account? get activeAccount =>_acctId == null ? null : ServiceHome.accounts.find(_acctId!);
+  Account? get activeAccount =>
+      _acctId == null ? null : ServiceHome.accounts.find(_acctId!);
 
   set activeAccount(Account? acct) {
     _acctId = acct?.id;
     notifyListeners();
   }
 
-  Future<void> save() async
-  {
+  Future<void> save() async {
     final dir = await getApplicationDocumentsDirectory();
     var f = File(dir.path + '/appstate.json');
     print("saving app state: ${f.absolute.path}");
     await f.writeAsString(
-        json.encode({ "account": _acctId, "watchList": activeWatchList?.name}));
+        json.encode({"account": _acctId, "watchList": activeWatchList?.name}));
   }
 
-  Future<void> load() async
-  {
+  Future<void> load() async {
     final dir = await getApplicationDocumentsDirectory();
     var f = File(dir.path + '/appstate.json');
     print("loading appstate");

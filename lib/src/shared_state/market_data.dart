@@ -14,12 +14,12 @@ abstract class MarketData
 
 class BidAskUpdate extends MarketData
 {
-  final double bid, bidSize, ask, askSize, last, lastSize;
-  final int lastTime;
+  final double? bid, bidSize, ask, askSize, last, lastSize;
+  final int? lastTime;
   final String? exchange;
 
   BidAskUpdate({required this.bid, required this.bidSize, required this.ask, required this.askSize,
-    this.last=0, this.lastSize=0, this.lastTime=0, this.exchange, required int received, required String key}) : super(received, key);
+    this.last, this.lastSize, this.lastTime, this.exchange, required int received, required String key}) : super(received, key);
 
   void consume(Ticker tkr)
   {
@@ -31,6 +31,7 @@ class BidAskUpdate extends MarketData
     tkr.lastSize.update(lastSize);
     tkr.lastExchange.update(exchange);
     tkr.lastTime.update(lastTime);
+    if (last != 0) tkr.updateChange();
   }
 }
 
@@ -63,6 +64,7 @@ class SummaryUpdate extends MarketData
     tkr.pe.update(pe);
     tkr.eps.update(eps);
     tkr.marketCap.update(marketCap);
+    tkr.updateChange();
   }
 }
 

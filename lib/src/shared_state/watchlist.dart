@@ -35,9 +35,20 @@ class WatchList implements Destroyable
 
   Map<String, dynamic> toJson() => { "name": name, "groups": groups};
 
+  void subscribe()
+  {
+    for(var grp in groups) grp.subscribe();
+  }
+
+  void unsubscribe()
+  {
+    for(var grp in groups) grp.unsubscribe();
+  }
+
   @override
   void destroy()
   {
+    for(var grp in groups) grp.destroy();
   }
 
 }
@@ -46,48 +57,76 @@ class TickerGroup implements Destroyable
 {
   String _name;
   List<String> _symbols;
-  List<Instrument>? _instruments;
+  List<Ticker>? _tickers;
+  int _subCount=0;
 
   TickerGroup(this._name, List<String> symbols) : _symbols = List.unmodifiable(symbols);
   TickerGroup.fromJSON(Map<String, dynamic> json) : _name = json["name"], _symbols = List.unmodifiable(json["symbols"]);
 
   List<String> get symbols => _symbols;
   String get name => _name;
-  List<Instrument> get instruments
+
+  List<Ticker> get tickers
   {
-    if (_instruments != null) return _instruments!;
+    if (_tickers != null) return _tickers!;
+    var tickers = ServiceHome.workspace?.tickers;
     var instruments = ServiceHome.workspace?.instruments;
-    if (instruments == null) return [];
+    if (tickers == null || instruments == null) return [];
+
     // Resolve Instruments.  We may need to roll the instrument if it is expired
-    List<Instrument> list = [];
-    bool updateSyms = false;
-    for(var sym in symbols) {
-      var instr = instruments.findByKey(sym);
+    _tickers = <Ticker>[];
+    bool updateKeys = false;
+    for(var key in symbols) {
+      var instr = instruments.findByKey(key);
       if (instr == null) {
-        log.warning("TickerGroup::instruments unable to resolve $sym");
+        log.warning("TickerGroup::tickers unable to resolve $key");
         continue;
       }
-      log.info("instrument: ${instr.symbol} expires: ${instr.expires}");
       if (instr.expired) {
         var i = SymbolUtil.getNextContract(instr);
         log.warning("TickerGroup::instruments rolling to next contract ${i.symbol}");
-        if (i != instr) { instr = i; updateSyms = true; }
+        if (i != instr) { instr = i; updateKeys = true; }
       }
-      list.add(instr);
+
+
+      var tkr = tickers.byKey(key);
+      if (tkr == null) continue; // this should not happen
+      _tickers!.add(tkr);
     }
-    if (updateSyms) {
+    if (updateKeys) {
       _symbols = <String>[];
-      for(var i in list) _symbols.add(i.key);
+      for(var tkr in _tickers!) _symbols.add(tkr.instrument.key);
     }
-    _instruments = list;
-    return _instruments!;
+    return _tickers!;
   }
 
   Map<String, dynamic> toJson() => {"name" : name, "symbols" : symbols};
 
+  void subscribe()
+  {
+    _subCount++;
+    if (_subCount == 1) {
+      print("subscribing to tickers ${tickers.length}");
+      ServiceHome.beginUpdate();
+      for(var tkr in tickers) tkr.addObserver(this);
+      ServiceHome.endUpdate();
+    }
+  }
+
+  void unsubscribe()
+  {
+    _subCount--;
+    if (_subCount > 0) return;
+    destroy();
+  }
+
   @override
   void destroy()
   {
+    ServiceHome.beginUpdate();
+    for(var tkr in tickers) tkr.removeObserver(this);
+    ServiceHome.endUpdate();
+    _subCount = 0;
   }
 }
 
