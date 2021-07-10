@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:motivewave/src/service/service_home.dart';
 import 'package:motivewave/src/service/service_info.dart';
+import 'package:motivewave/src/settings/config.dart';
 import 'package:motivewave/src/shared_state/exchange.dart';
 import 'package:motivewave/src/shared_state/instrument.dart';
 import 'package:motivewave/src/shared_state/ticker.dart';
@@ -21,12 +22,14 @@ class Workspace {
   late final Instruments instruments;
   late final WatchLists watchlists;
   late final Tickers tickers;
+  late final Config config;
 
-  void _init() {
+  _init() {
     exchanges = Exchanges(this);
     instruments = Instruments(this);
     watchlists = WatchLists(this);
     tickers = Tickers(this);
+    config = Config(this);
   }
 
   Workspace(this.name, this.wsBucket, this.connections) { _init(); }
@@ -50,7 +53,7 @@ class Workspace {
     'wsBucket': wsBucket,
   };
 
-  void loadDefaults()
+  loadDefaults()
   {
     for(var srvc in connections) {
       var type = srvc.conn.type;
@@ -99,6 +102,7 @@ class Workspace {
     futures.add(exchanges.load());
     futures.add(instruments.load());
     futures.add(watchlists.load());
+    futures.add(config.load());
 
     await Future.wait(futures);
   }
@@ -109,7 +113,7 @@ class Workspace {
     futures.add(exchanges.save());
     futures.add(instruments.save());
     futures.add(watchlists.save());
-
+    futures.add(config.save());
     Future.wait(futures);
   }
 
@@ -143,13 +147,13 @@ class Workspaces extends ChangeNotifier {
   // returns a copy of the workspaces list
   List<Workspace> get workspaces => List<Workspace>.unmodifiable(_workspaces);
 
-  void add(Workspace ws)
+  add(Workspace ws)
   {
     _add(ws);
     notifyListeners();
   }
 
-  void remove(Workspace ws)
+  remove(Workspace ws)
   {
     if (!_nameMap.containsKey(ws.name)) return;
     _nameMap.remove(ws.name);
@@ -158,13 +162,13 @@ class Workspaces extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setAll(List<Workspace> list)
+  setAll(List<Workspace> list)
   {
     list.forEach((ws) => _add(ws));
     notifyListeners();
   }
 
-  void _add(Workspace ws)
+  _add(Workspace ws)
   {
     if (_nameMap.containsKey(ws.name)) {
       print("Workspaces::load() duplicate workspace: ${ws.name} ignoring.");

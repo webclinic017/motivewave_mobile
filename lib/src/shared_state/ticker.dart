@@ -31,14 +31,117 @@ class Ticker implements Destroyable
   // This should only be called by Tickers below
   Ticker(this.instrument);
 
+  Object? value(String p)
+  {
+    switch(p) {
+      case "underlying":
+        return instrument.underlying;
+      case "symbol":
+        return instrument.symbol;
+      case "exchange":
+        return instrument.exchange;
+      case "currency":
+        return instrument.currency;
+      case "title":
+        return instrument.title;
+      case "description":
+        return instrument.description;
+      case "sectorId":
+        return instrument.sectorId;
+      case "industryGroupId":
+        return instrument.industryGroupId;
+    // TODO: add others
+    }
+    var prop = property(p);
+    if (prop == null) return prop;
+    return prop.state;
+
+  }
+
+  Cubit? property(String prop)
+  {
+    switch(prop) {
+      case "bid":
+        return bid;
+      case "bidSize":
+        return bidSize;
+      case "ask":
+        return ask;
+      case "askSize":
+        return askSize;
+      case "last":
+        return last;
+      case "lastSize":
+        return lastSize;
+      case "open":
+        return open;
+      case "high":
+        return high;
+      case "low":
+        return low;
+      case "settle":
+        return settle;
+      case "openInterest":
+        return openInterest;
+      case "prevClose":
+        return prevClose;
+      case "high52":
+        return high52;
+      case "low52":
+        return low52;
+      case "highCalendarYear":
+        return highCalendarYear;
+      case "lowCalendarYear":
+        return lowCalendarYear;
+      case "dayVolume":
+        return dayVolume;
+      case "yesterdayVolume":
+        return yesterdayVolume;
+      case "change":
+        return change;
+      case "changePer":
+        return changePer;
+      case "invChange":
+        return invChange;
+      case "invChangePer":
+        return invChangePer;
+      case "percentOffOpen":
+        return percentOffOpen;
+      case "percentOffHigh":
+        return percentOffHigh;
+      case "percentOffLow":
+        return percentOffLow;
+      case "marketCap":
+        return marketCap;
+      case "netAssetValue":
+        return netAssetValue;
+      case "pe":
+        return pe;
+      case "eps":
+        return eps;
+      case "dividendAmount":
+        return dividendAmount;
+      case "dividendYield":
+        return dividendYield;
+      case "lastExchange":
+        return lastExchange;
+    //case "expires": return formatMMDDYYYY(instrument.expires);
+      case "dividendDate":
+        return dividendDate;
+      case "lastTime":
+        return lastTime;
+    }
+    return null;
+  }
+
   String format(String prop)
   {
     switch(prop) {
       case "bid": return formatPrice(bid);
       case "bidSize": return formatMK(bidSize.state);
-      case "ask": return formatPrice(bid);
+      case "ask": return formatPrice(ask);
       case "askSize": return formatMK(askSize.state);
-      case "last": return formatPrice(bid);
+      case "last": return formatPrice(last);
       case "lastSize": return formatMK(lastSize.state);
       case "open": return formatPrice(open);
       case "high": return formatPrice(high);

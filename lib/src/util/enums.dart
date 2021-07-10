@@ -151,3 +151,7 @@ enum BarSizeType {
 enum BarInterval {
   MONTH, WEEK, DAY, MINUTE, SECOND, MILLISECOND
 }
+
+enum WatchListView {
+  CARD, TABLE
+}

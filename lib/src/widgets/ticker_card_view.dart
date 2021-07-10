@@ -3,13 +3,27 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:motivewave/src/common/colors.dart';
 import 'package:motivewave/src/common/style_helper.dart';
 import 'package:motivewave/src/common/styles.dart';
+import 'package:motivewave/src/service/service_home.dart';
 import 'package:motivewave/src/shared_state/ticker.dart';
+import 'package:motivewave/src/shared_state/watchlist.dart';
 import 'package:motivewave/src/util/observable.dart';
 
-class TickerCard extends StatelessWidget {
+class TickerCardView extends StatelessWidget
+{
+  @override
+  Widget build(BuildContext ctx) {
+    var watchList = ctx.read<WatchList>();
+    var group = watchList.groups.first;
+    return ListView.builder(
+      itemCount: group.tickers.length,
+      itemBuilder: (ctx, index) => ListTile(title: TickerCard(group.tickers[index]))
+    );
+  }
+}
 
+class TickerCard extends StatelessWidget
+{
   final Ticker ticker;
-
   TickerCard(this.ticker);
 
   @override
