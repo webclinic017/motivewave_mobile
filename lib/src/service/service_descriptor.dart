@@ -67,6 +67,7 @@ class ServiceDescriptor {
 
   List<Exchange> get exchanges => [];
   List<InstrumentInfo> get defaultInstruments => [];
+  List<InstrumentInfo> get suggestions => [];
   List<WatchList> get watchlists => [];
 
   @protected

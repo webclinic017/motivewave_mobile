@@ -10,6 +10,13 @@ import 'package:logging/logging.dart';
 
 final log = Logger("General Log");
 
+int MILLIS_IN_MINUTE = 60 * 1000;
+int MILLIS_IN_HOUR = 60 * 60 * 1000;
+int MILLIS_IN_DAY = 24 * MILLIS_IN_HOUR;
+int MILLIS_IN_MONTH = MILLIS_IN_DAY * 30;
+int MILLIS_IN_WEEK = MILLIS_IN_DAY * 7;
+int MILLIS_IN_YEAR = (365.25 * MILLIS_IN_DAY).toInt();
+
 // Creates a new ID using the current time in millis
 // To conserve space it is represented as an unsigned long using a radix of 32
 String newId() => DateTime.now().millisecondsSinceEpoch.toUnsigned(64).toRadixString(32);
@@ -33,6 +40,8 @@ int midnight()
   var lastMidnight = DateTime(now.year, now.month, now.day);
   return lastMidnight.millisecondsSinceEpoch;
 }
+
+DateTime dateFromMillis(int ts) => DateTime.fromMillisecondsSinceEpoch(ts, isUtc: true);
 
 bool isDigit(String s, [int idx=0]) => (s.codeUnitAt(idx) ^ 0x30) <= 9;
 

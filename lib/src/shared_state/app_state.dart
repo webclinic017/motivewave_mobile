@@ -12,7 +12,7 @@ import 'dart:convert';
 class AppState extends ChangeNotifier {
   bool _initialized = false;
   String? _acctId, _wlName;
-  final _activeWatchList = ValueNotifier<WatchList?>(null);
+  final _activeWatchList = WatchListNotifier(null);
 
   bool get initialized => _initialized;
 
@@ -21,13 +21,25 @@ class AppState extends ChangeNotifier {
   WatchList? get activeWatchList {
     if (_activeWatchList.value != null) return _activeWatchList.value!;
     var ws = ServiceHome.workspaces.defaultWs;
-    if (ws == null || _wlName == null) return null;
+    if (ws == null) return null;
+    if (_wlName == null) {
+      if (ws.watchlists.all.isEmpty) return null;
+      var wl = ws.watchlists.all.first;
+      _wlName = wl.name;
+      activeWatchList = wl;
+      return wl;
+    }
+
     var wl = ws.watchlists.find(_wlName!);
     if (wl == null) wl = ws.watchlists.all.first;
     _wlName = wl.name;
     activeWatchList = wl;
     return _activeWatchList.value;
   }
+
+  // Hack: WatchList cannot extend ChangeNotifier, so we need to manually
+  // notify an update to the object itself
+  void notifyWatchListUpdate() => _activeWatchList.updated();
 
   set activeWatchList(WatchList? ws) {
     _activeWatchList.value?.unsubscribe();
@@ -80,4 +92,12 @@ class AppState extends ChangeNotifier {
     _initialized = true;
     notifyListeners();
   }
+}
+
+
+class WatchListNotifier extends ValueNotifier<WatchList?>
+{
+  WatchListNotifier(WatchList? value) : super(value);
+
+  void updated() => notifyListeners();
 }

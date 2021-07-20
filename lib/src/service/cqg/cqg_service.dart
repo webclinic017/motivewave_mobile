@@ -27,7 +27,7 @@ class CQGService extends Service {
   static const String CLIENT_ID = "MotiveWaveWAPI";
   static const String AMP_DEMO_CLIENT_ID = "AMPConnect";
 
-  static const int LOOKUP_TIMEOUT = 30000;
+  static const int LOOKUP_TIMEOUT = 5000;
   static const int HIST_TIMEOUT = 120000;
 
   CQGService(Workspace workspace, ServiceInfo info, ServiceDescriptor desc) : super(workspace, info, desc);
@@ -55,6 +55,7 @@ void cqgIsolate(SendPort out)
       case SrvcMsgType.ACCOUNTS: proxy.requestAccounts(); break;
       case SrvcMsgType.BALANCES: proxy.requestBalances(); break;
       case SrvcMsgType.SUBSCRIBE: proxy.subscribe(msg.params[0], msg.params[1], msg.params[2], msg.params[3]); break;
+      case SrvcMsgType.SEARCH: proxy.search(msg.params[0]); break;
       case SrvcMsgType.RETURN_INSTR:
         String symbol = msg.params[0];
         //String exch = msg.params[1]; // not needed for CQG
@@ -125,6 +126,14 @@ class CQGProxy
 
     connected = false;
     listen();
+  }
+
+  void search(String symbol) async
+  {
+    var c = await resolveContract(symbol);
+    var result = <InstrumentInfo>[];
+    if (c != null) result.add(toInfo(c));
+    send(SrvcResultType.SEARCH_RESULT, result);
   }
 
   void requestAccounts() async
@@ -201,7 +210,9 @@ class CQGProxy
     if (type == InstrumentType.FOREX) {
     }
     else if (type == InstrumentType.FUTURE) {
-      if (c.hasLastTradingDate()) info.expires = DateTime.fromMicrosecondsSinceEpoch(baseTime + c.lastTradingDate.toInt(), isUtc: true);
+      if (c.hasLastTradingDate()) {
+        info.expires = dateFromMillis(baseTime + c.lastTradingDate.toInt());
+      }
       if (c.tickSize > 0) info.pointValue = roundDouble(c.tickValue/c.tickSize, 4);
     }
     /*else if (type == InstrumentType.FUTURE_OPTION) {
@@ -254,13 +265,13 @@ class CQGProxy
       }
     }
     if (contract.hasLastTradingDate()) {
-      int expires = baseTime + contract.lastTradingDate.toInt();
-      if (instr.expiresMillis != expires) {
+      var expires = dateFromMillis(baseTime + contract.lastTradingDate.toInt());
+      if (instr.expires != expires) {
         String exp1 = formatMMDDYYYY(instr.expires);
-        String exp2 = formatMMDDYYYY(DateTime(expires));
+        String exp2 = formatMMDDYYYY(expires);
         if (exp1 != exp2) {
-          log.warning("CQGService::updateInformation() $symbol expiry date: $exp1 to: $exp2");
-          instr.expires = DateTime(expires);
+          print("CQGService::updateInformation() $symbol expiry date: $exp1 to: $exp2 baseTime: $baseTime");
+          instr.expires = expires;
           modified = true;
         }
       }
@@ -283,7 +294,7 @@ class CQGProxy
     req2Instr[sym] = sync;
     send(SrvcResultType.REQUEST_INSTR, sym);
     try {
-      instr = await sync.future.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
+      instr = await sync.future; //.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
       if (sync.isCompleted && instr != null) {
         id2Instr[c.contractId] = instr;
         return instr;
@@ -323,9 +334,13 @@ class CQGProxy
     req2InfoRpt[reqId] = sync;
     sendMsg(ClientMsg(informationRequest: [InformationRequest(id: reqId, symbolResolutionRequest: SymbolResolutionRequest(symbol: symbol))]));
     try {
-      var rpt = await sync.future; //.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
+      var rpt = await sync.future.timeout(Duration(milliseconds: CQGService.LOOKUP_TIMEOUT));
       if (sync.isCompleted && rpt.hasSymbolResolutionReport()) {
-        _register(rpt.symbolResolutionReport.contractMetadata);
+        c = rpt.symbolResolutionReport.contractMetadata;
+        _register(c);
+        // If this is a search request, make sure to register the contract under the given search symbol
+        symbol2Contract[symbol] = c;
+        return c;
       }
       else {
         print("contract not found!");
@@ -363,6 +378,7 @@ class CQGProxy
       if (msg.hasLogonResult()) {
         var base = DateFormat("yyyy-MM-dd'T'HH:mm:ss").parse(msg.logonResult.baseTime, true);
         baseTime = base.millisecondsSinceEpoch;
+
         if (msg.logonResult.resultCode == LogonResult_ResultCode.SUCCESS.value) {
           connected = true;
           send(SrvcResultType.CONNECTED);

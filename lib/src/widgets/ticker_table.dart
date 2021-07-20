@@ -5,7 +5,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:horizontal_data_table/horizontal_data_table.dart';
 import 'package:motivewave/src/common/style_helper.dart';
 import 'package:motivewave/src/common/styles.dart';
-import 'package:motivewave/src/service/service_home.dart';
 import 'package:motivewave/src/settings/watch_list_settings.dart';
 import 'package:motivewave/src/shared_state/columns.dart';
 import 'package:motivewave/src/shared_state/ticker.dart';
@@ -16,8 +15,15 @@ import 'package:provider/provider.dart';
 final ROW_HEIGHT=30.0;
 final TITLE_HEIGHT=25.0;
 
+typedef ValuesChanged<T, E> = void Function(T value, E valueTwo);
+
 class TickerTable extends StatefulWidget {
-  TickerTable({Key? key}) : super(key: key);
+  final WatchList wl;
+  final ValuesChanged<DragStartDetails, ScrollController> handleDragStart;
+  final ValuesChanged<DragUpdateDetails, ScrollController> handleDragUpdate;
+  final ValueChanged<DragEndDetails> handleDragEnd;
+
+  TickerTable(this.wl, this.handleDragStart, this.handleDragUpdate, this.handleDragEnd, { Key? key})  :  super(key: key);
 
   @override
   _TickerTableState createState() => _TickerTableState();
@@ -33,13 +39,25 @@ class _TickerTableState extends State<TickerTable>
   late WatchList watchList;
   late List<Ticker> tickers;
 
+  late ScrollController scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    scrollController = ScrollController();
+  }
+
+  @override
+  void dispose() {
+    //scrollController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext ctx) {
     settings = ctx.watch<WatchListSettings>();
-    watchList = ctx.read<WatchList>();
+    watchList = widget.wl;
     rightCols = [];
     for(var prop in settings.columns) {
-      if (prop == "symbol") continue;
       var col = TickerColumns.find(prop);
       if (col != null) rightCols.add(col);
     }
@@ -57,8 +75,13 @@ class _TickerTableState extends State<TickerTable>
     double right = 0;
     for(var col in rightCols) right += col.width;
 
-    return Container(
+    return  GestureDetector(
+      onHorizontalDragStart: (details) => widget.handleDragStart(details, scrollController),
+      onHorizontalDragUpdate: (details) => widget.handleDragUpdate(details, scrollController),
+      onHorizontalDragEnd: widget.handleDragEnd,
       child: HorizontalDataTable(
+        horizontalScrollPhysics: const NeverScrollableScrollPhysics(),
+        horizontalScrollController: scrollController,
         leftHandSideColumnWidth: symbolCol.width,
         rightHandSideColumnWidth: right,
         isFixedHeader: true,
@@ -82,7 +105,7 @@ class _TickerTableState extends State<TickerTable>
           radius: Radius.circular(5.0),
         ),
       ),
-      height: MediaQuery.of(ctx).size.height,
+      //height: MediaQuery.of(ctx).size.height,
     );
   }
 

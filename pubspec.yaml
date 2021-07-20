@@ -38,6 +38,7 @@ dependencies:
   flutter_bloc: ^7.0.1
   dart_numerics:
   horizontal_data_table: ^3.4.2
+  settings_ui: ^1.0.0
 
 dev_dependencies:
   flutter_test:

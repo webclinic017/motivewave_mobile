@@ -141,8 +141,7 @@ class CSV {
   String? str(String? key, Map<String, String> map) { return empty(key) ? null : _resolve(key, map); }
   DateTime? date(String? val) {
     if (empty(val)) return null;
-    int? ts = toInt(val);
-    if (ts == null) return null;
+    int ts = toInt(val);
     return DateTime.fromMillisecondsSinceEpoch(ts);
   }
 

@@ -32,7 +32,7 @@ class CQGDescriptor extends ServiceDescriptor {
   @override
   List<InstrumentInfo> get defaultInstruments
   {
-    List<InstrumentInfo> l = SymbolUtil.generateCQG();
+    var l = SymbolUtil.generateCQG();
     l.addAll([InstrumentInfo.indicator("DJIUP", "NYSE Advancing Issues", "USD", "NONE", 1),
               InstrumentInfo.indicator("DJIDN", "NYSE Declining Issues", "USD", "NONE", 1),
               InstrumentInfo.indicator("NASIUP", "NASDAQ Advancing Issues", "USD", "NONE", 1),
@@ -42,6 +42,22 @@ class CQGDescriptor extends ServiceDescriptor {
               InstrumentInfo.indicator("DJTRN", "NYSE TRIN", "USD", "NONE", 1),
               InstrumentInfo.indicator("NASTRN", "NASDAQ TRIN", "USD", "NONE", 1)]);
     return l;
+  }
+
+  @override
+  List<InstrumentInfo> get suggestions
+  {
+    var list = <InstrumentInfo>[];
+    // There is probably a more efficient way to do this
+    for(var base in ["EP", "MES", "YM", "MYM", "ENQ", "MNQ", "RTY", "M2K", "GCE", "MGC", "CLE", "MCLE", "NGE", "DD", "FDXS", "DSX", "FSXE"]) {
+      if (base == "GCE") {
+        print("here!");
+      }
+      var instr = SymbolUtil.getActiveContract(base, type);
+      if (instr != null) list.add(instr.toInfo());
+    }
+
+    return list;
   }
 
   @override

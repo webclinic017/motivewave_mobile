@@ -3,21 +3,56 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:motivewave/src/common/colors.dart';
 import 'package:motivewave/src/common/style_helper.dart';
 import 'package:motivewave/src/common/styles.dart';
-import 'package:motivewave/src/service/service_home.dart';
+import 'package:motivewave/src/shared_state/app_state.dart';
 import 'package:motivewave/src/shared_state/ticker.dart';
 import 'package:motivewave/src/shared_state/watchlist.dart';
-import 'package:motivewave/src/util/observable.dart';
 
-class TickerCardView extends StatelessWidget
+
+class TickerCardList extends StatefulWidget
 {
+  final WatchList watchList;
+  TickerCardList(this.watchList, {Key? key}) : super(key: key);
+
+  @override
+  State<StatefulWidget> createState() => _TickerCardListState();
+}
+
+class _TickerCardListState extends State<TickerCardList>
+{
+  _TickerCardListState();
+
   @override
   Widget build(BuildContext ctx) {
-    var watchList = ctx.read<WatchList>();
-    var group = watchList.groups.first;
-    return ListView.builder(
-      itemCount: group.tickers.length,
-      itemBuilder: (ctx, index) => ListTile(title: TickerCard(group.tickers[index]))
-    );
+    var group = widget.watchList.groups.first;
+    var tkrs = List<Ticker>.from(group.tickers);
+
+    return Container(padding: EdgeInsets.fromLTRB(15, 0, 15, 0),child: ReorderableListView(
+      onReorder: (oi, ni) {
+        if (ni>oi) ni--;
+        if (ni > tkrs.length) return;
+        tkrs.insert(ni, tkrs.removeAt(oi));
+        group.tickers = tkrs;
+        setState(() {});
+      },
+      children: <Widget>[
+        for(final tkr in group.tickers)
+          Dismissible(key: Key(tkr.instrument.key),
+            direction: DismissDirection.endToStart,
+            child: Card(
+              key: ValueKey(tkr),
+              elevation: 2,
+              child: TickerCard(tkr)),
+            onDismissed: (direction) {
+              tkrs.remove(tkr);
+              group.tickers = tkrs;
+              setState(() {});
+            },
+            background: Container(padding: EdgeInsets.all(15), alignment: Alignment.centerRight, color: Colors.red, child: Text("Delete", style: headerStyle)),
+
+          ),
+      ],
+    ));
+
   }
 }
 
@@ -48,7 +83,7 @@ class TickerCard extends StatelessWidget
             )),
 
             // Last Price and Change
-            Expanded(flex: 4, child: Column(
+            Expanded(flex: 5, child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.end,
               children: <Widget>[
@@ -84,14 +119,6 @@ class TickerCard extends StatelessWidget
         ),
       ),
       onPressed: () {
-/*
-        // Trigger fetch event.
-        BlocProvider
-            .of<ProfileBloc>(context)
-            .add(FetchProfileData(symbol: data.symbol));
-
-        // Send to Profile.
-        Navigator.push(context, MaterialPageRoute(builder: (_) => Profile(symbol: data.symbol))); */
       },
     );
   }

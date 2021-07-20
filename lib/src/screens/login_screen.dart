@@ -64,7 +64,7 @@ class LoginFormState extends State<LoginForm> {
     var result = await widget.service.doConnect(Credentials(username: _loginIdCtrl.text, password: _passwordCtrl.text, connection: _connection));
     if (result.success) {
       widget.service.onConnected();
-      Navigator.pushReplacementNamed(context, '/watchlist');
+      Navigator.pushNamed(context, "/watchlist");
     }
     else {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(result.message ??"")));

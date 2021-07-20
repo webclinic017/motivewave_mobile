@@ -62,7 +62,8 @@ class Service {
     }
   }
 
-  var completer = Completer<ConnectResult>();
+  var loginCompleter = Completer<ConnectResult>();
+  var searchCompleter = Completer<List<InstrumentInfo>>();
 
   Future<void> startIsolate() async => { };
 
@@ -77,9 +78,9 @@ class Service {
     //print("service::onMessage() ${msg.type} ${msg.params}");
     switch(msg.type) {
       case SrvcResultType.CONNECTED:
-        completer.complete(ConnectResult(true)); break;
+        loginCompleter.complete(ConnectResult(true)); break;
       case SrvcResultType.CONNECT_FAILED:
-        completer.complete(ConnectResult(false, p)); break;
+        loginCompleter.complete(ConnectResult(false, p)); break;
       case SrvcResultType.ACCOUNTS:
         List<Account> accounts = msg.params;
         for(var acct in accounts) acct.conn = info.connectionID;
@@ -104,6 +105,10 @@ class Service {
       case SrvcResultType.MARKET_DATA:
         onMarketData(p);
         break;
+      case SrvcResultType.SEARCH_RESULT:
+        print("completing search result: ");
+        searchCompleter.complete(p);
+        break;
     }
   }
 
@@ -120,16 +125,15 @@ class Service {
   @override
   Future<ConnectResult> doConnect(Credentials c) async
   {
-    completer = Completer<ConnectResult>();
+    loginCompleter = Completer<ConnectResult>();
     await startIsolate();
     send(SrvcMsgType.SERVICE_TYPE, type);
     send(SrvcMsgType.CONNECT, c);
-    return completer.future;
+    return loginCompleter.future;
   }
 
   void onConnected()
   {
-    print("onConnected");
     connected = true;
     subscribeAll();
     reqAccounts();
@@ -137,6 +141,44 @@ class Service {
     reqOrders();
     reqPositions();
     reqTradeHistory();
+  }
+
+  Future<List<InstrumentInfo>> search(String? symbol, String? description,
+      InstrumentType? type, String? currency, String? exchange)  async
+  {
+    var instruments = <InstrumentInfo>[];
+    if (symbol != null) symbol = symbol.toUpperCase();
+
+    for(var instr in workspace.instruments.all) {
+      if (instr.expired) continue;
+      if (type != null && instr.type != type) continue;
+      if (!empty(exchange) && exchange != instr.exchange) continue;
+      if (!empty(symbol) && !instr.symbol.startsWith(symbol!)) continue;
+      if (!empty(description)) {
+
+      }
+      instruments.add(instr.toInfo());
+    }
+
+    if (!empty(symbol) || !empty(description) || !empty(exchange)) {
+      var result = await _doSearch(symbol, description, type, currency, exchange);
+      for (var i in result) {
+        if (!instruments.contains(i)) {
+          instruments.add(i);
+        }
+      }
+    }
+    // Sort by symbol
+    instruments.sort((i1, i2) => i1.symbol.compareTo(i2.symbol));
+    return instruments;
+  }
+
+  Future<List<InstrumentInfo>> _doSearch(String? symbol, String? description,
+      InstrumentType? type, String? currency, String? exchange)  async
+  {
+    searchCompleter = Completer<List<InstrumentInfo>>();
+    send(SrvcMsgType.SEARCH, [symbol, description, type, currency, exchange]);
+    return searchCompleter.future.timeout(Duration(milliseconds: 5000));
   }
 
   void reqAccounts() { send(SrvcMsgType.ACCOUNTS); }
@@ -153,7 +195,7 @@ class Service {
   void send(SrvcMsgType type, [dynamic params])
   {
     if (out == null) return;
-    print("sending message: $type");
+    print("sending message: $type $params");
     out!.send(SrvcMessage(type, params));
   }
 
@@ -254,7 +296,7 @@ enum SrvcMsgType {
 }
 
 enum SrvcResultType {
-  CONNECTED, CONNECT_FAILED, ACCOUNTS, BALANCES, REQUEST_INSTR, UPDATE_INSTR, MARKET_DATA
+  CONNECTED, CONNECT_FAILED, ACCOUNTS, BALANCES, REQUEST_INSTR, UPDATE_INSTR, MARKET_DATA, SEARCH_RESULT
 }
 
 class SrvcMessage {

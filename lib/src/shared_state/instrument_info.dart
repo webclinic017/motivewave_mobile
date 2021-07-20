@@ -46,6 +46,16 @@ class InstrumentInfo
     return _key??"";
   }
 
+  @override
+  bool operator==(Object? other)
+  {
+    if (!(other is InstrumentInfo)) return false;
+    return key == other.key;
+  }
+
+  @override
+  int get hashCode => key.hashCode;
+
 
   @override
   String toString()
@@ -63,7 +73,10 @@ class InstrumentInfo
       if (!empty(type) && type != instr.type) { instr.type = type; modified = true; }
       if (!empty(underlying) && underlying != instr.underlying) { instr.underlying = underlying; modified = true; }
       if (!empty(currency) && currency != instr.currency) { instr.currency = currency; modified = true; }
-      if (!empty(expires) && expires != instr.expires) { instr.expires = expires; modified = true; }
+      if (!empty(expires) && expires != instr.expires) {
+        instr.expires = expires; modified = true;
+        print("updating expiry date: $symbol ${formatMMDDYYYY(expires)}");
+      }
       if (!empty(minTick) && minTick != instr.minTick) { instr.minTick = minTick; modified = true; }
       if (!empty(pointValue) && pointValue != instr.pointValue) { instr.pointValue = pointValue; modified = true; }
       if (!empty(displayMultiplier) && displayMultiplier != instr.displayMultiplier) { instr.displayMultiplier = displayMultiplier; modified = true; }
@@ -109,5 +122,7 @@ class InstrumentInfo
   }
 
   double round(double price) => (price/minTick).round() * minTick;
+
+
 
 }

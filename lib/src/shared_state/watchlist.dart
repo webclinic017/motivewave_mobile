@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:motivewave/src/service/service_home.dart';
 import 'package:motivewave/src/shared_state/instrument.dart';
 import 'package:motivewave/src/shared_state/ticker.dart';
@@ -12,18 +13,14 @@ import 'package:motivewave/src/util/util.dart';
 
 class WatchList implements Destroyable
 {
-  String? _name;
-  List<TickerGroup>? _groups;
+  late String _name;
+  late List<TickerGroup> _groups;
 
   WatchList(this._name, this._groups);
   WatchList.simple(this._name, List<String> symbols)
   {
-    _groups = List.unmodifiable([TickerGroup("", symbols)]);
+    _groups = [TickerGroup("", symbols)];
   }
-
-  String get name => _name??"";
-  List<TickerGroup> get groups => _groups??[];
-
   WatchList.fromJSON(Map<String, dynamic> json) {
     _name = json["name"];
     var l = <TickerGroup>[];
@@ -34,6 +31,11 @@ class WatchList implements Destroyable
   }
 
   Map<String, dynamic> toJson() => { "name": name, "groups": groups};
+
+  String get name => _name;
+  set name(String n) { name = n; }
+
+  List<TickerGroup> get groups => _groups;
 
   void subscribe()
   {
@@ -65,6 +67,11 @@ class TickerGroup implements Destroyable
 
   List<String> get symbols => _symbols;
   String get name => _name;
+
+  set tickers(List<Ticker> tkrs) {
+    _tickers = tkrs;
+    _symbols = List.from(tkrs.map((tkr) => tkr.instrument.symbol));
+  }
 
   List<Ticker> get tickers
   {

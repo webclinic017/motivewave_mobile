@@ -46,6 +46,8 @@ class Instrument {
 
   String get key => _key;
 
+  bool get future => type == InstrumentType.FUTURE;
+
   double calcPnL(double rawMove, double qty)
   {
     if (qty == 0) return 0;
@@ -217,7 +219,7 @@ class Instruments extends ChangeNotifier with CSV
   Instrument? _fromCSV(String csv, Map<String, String> map)
   {
     List<String> tok = parse(csv);
-    if (empty(tok)) return null;
+    if (empty(tok) || tok.length < 44) return null;
     var conn = ConnectionID.getByID(str(tok[43], map));
     var sym = str(tok[6], map);
     var type = fromShortCode(tok[4]);
@@ -246,13 +248,22 @@ class Instruments extends ChangeNotifier with CSV
     if (instr.type == InstrumentType.FUTURE && instr.expires == null) {
       instr.expires = SymbolUtil.getExpiryDate(instr.underlying, instr.symbol, instr.service);
     }
+    if (instr.future) {
+      // Hack: pull the letter from the symbol
+      var sym = instr.symbol;
+      int ind = sym.length-1;
+      if (isDigit(sym, ind)) {
+        while(ind >= 0 && isDigit(sym, ind)) ind--;
+        if (ind >= 0) instr.letter = sym.substring(ind, ind+1);
+      }
+    }
 
     return instr;
   }
 
   void update(Instrument instr)
   {
-    if (instr == null || !_keyMap.containsKey(instr.key)) return;
+    if (!_keyMap.containsKey(instr.key)) return;
     _unsavedChanges = true;
   }
 

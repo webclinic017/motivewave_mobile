@@ -48,7 +48,7 @@ class SymbolUtil {
 
   static String convertFXSymbolToBase(String symbol)
   {
-    if (symbol == null || symbol == "") return symbol;
+    if (symbol == "") return symbol;
     String origSymbol = symbol;
     symbol = symbol.replaceAll("^", "");
     symbol = symbol.replaceAll("O.COMP", "");
@@ -81,7 +81,6 @@ class SymbolUtil {
 
   static bool isContinuousInstr(Instrument instr)
   {
-    if (instr == null) return false;
     if (instr.type != InstrumentType.FUTURE) return false;
     return isContinuous(instr.symbol, instr.service);
   }
@@ -132,12 +131,83 @@ class SymbolUtil {
     if (to == ServiceType.FOREX) return "GAIN";
     if (to == ServiceType.FXCM) return "FXCM"; */
 
-    if (to != null && (to.isRithmic() || to.isCQG()) && compareIgnoreCase(exch, "GLOBEX")) return "CME";
+    if ((to.isRithmic() || to.isCQG()) && compareIgnoreCase(exch, "GLOBEX")) return "CME";
 
     // What about when the exchange is SMART (IB)?  In this case there is not enough information...
 
     return exch;
   }
+
+  static Instrument? getActiveContract(String base, ServiceType? srvc)
+  {
+    //if (srvc != null && srvc.isCQG()) base = convertCommonToCQG(base);
+    var contracts = getContracts(base, srvc);
+    if (empty(contracts)) return null;
+    var active = contracts[0];
+    // TODO: implement roll settings
+    /*
+    if (contracts.length > 1) {
+      var rs = active.getRollSettings(null);
+      var roll = ServiceHome.computeRollDate(active, rs);
+      if (roll != null && ServiceHome.getCurrentTime() >= roll.date) {
+        active = contracts.get(1);
+      }
+    }*/
+    return active;
+  }
+
+  static List<Instrument> getContracts(String base, ServiceType? srvc)
+  {
+    List<Instrument> list = [];
+    List<String>? letters = _activeContracts[base];
+    var instruments = ServiceHome.workspace!.instruments;
+
+    for(var i in instruments.all) {
+      if (!i.future || i.expired || i.service != srvc || isContinuous(i.symbol)) continue;
+      if (i.underlying != base) continue;
+      // Rithmic has built-in front contracts
+      if (srvc != null && srvc.isRithmic() && i.symbol == base) continue;
+      if (letters != null && !letters.contains(i.letter)) continue;
+      if (!list.contains(i)) list.add(i);
+    }
+    list.sort((i1, i2) => i1.expiresMillis.compareTo(i2.expiresMillis));
+
+    if (list.length >= 5) {
+      // Its possible that we are missing a contract at the beginning
+      if (list[0].expiresMillis + 2*MILLIS_IN_MONTH < now()) return list;
+    }
+
+    for(var fc in _generate(base, srvc, now(), 2)) {
+      // Hack: its possible the expiry date here is wrong, there may be a local instrument with the right expiry date
+      var instr = instruments.findByKey(fc.key);
+      if (instr != null && instr.expired) continue;
+      if (fc.expired) continue;
+      if (!empty(letters) && !letters!.contains(fc.letter)) continue;
+      bool found = false;
+      for(var i in list) {
+        if (fc.symbol == i.symbol) { found = true; break; }
+      }
+      if (!found) {
+        fc.serviceType = srvc;
+        var ii = fc.toInstrument();
+        // Don't create this contract (we don't want it in the database)
+        //MWInstrument.createAndRegister(ii);
+        list.add(ii);
+      }
+    }
+    list.sort((i1, i2) => i1.expiresMillis.compareTo(i2.expiresMillis));
+    return list;
+  }
+
+  static Map<String, SymbolGenerator> _getMap(ServiceType? srvc)
+  {
+    if (srvc == null) return _generators;
+    if (srvc == ServiceType.BARCHART) return _bcGenerators;
+    if (srvc.isCQG()) return _cqgGenerators;
+    if (srvc.isRithmic()) return _rithmicGenerators;
+    return _generators;
+  }
+
 
   static Instrument getNextContract(Instrument instr)
   {
@@ -498,7 +568,7 @@ class SymbolUtil {
     return y;
   }
 
-  static String convertFutureMonth(String base, DateTime exp) { return exp == null ? "" : convertFutureMonthInt(base, exp.month); }
+  static String convertFutureMonth(String base, DateTime exp) { return convertFutureMonthInt(base, exp.month); }
 
   static String convertFutureMonthInt(String base, int month)
   {
@@ -773,7 +843,16 @@ class SymbolUtil {
 
   static List<InstrumentInfo> _generateBCSymbols(String base, int year) { return _generateSymbols(_bcGenerators, base, year, ServiceType.BARCHART); }
 
-  static List<InstrumentInfo> _generateSymbols(Map<String, SymbolGenerator> genMap, String base, int year, ServiceType srvc)
+  static List<InstrumentInfo> _generate(String base, ServiceType? srvc, int time, int years)
+  {
+    int year = DateTime.fromMicrosecondsSinceEpoch(time).year;
+    var contracts = <InstrumentInfo>[];
+    for(int i=0; i < years; i++) contracts.addAll(_generateSymbols(_getMap(srvc), base, year++, srvc));
+    return contracts;
+
+  }
+
+  static List<InstrumentInfo> _generateSymbols(Map<String, SymbolGenerator> genMap, String base, int year, ServiceType? srvc)
   {
     var gen=genMap[base];
     if (gen == null) {
@@ -1018,12 +1097,14 @@ class SymbolUtil {
     // Energy
 
     // This one is tricky.  If the 25 of the month is a holiday or weekend, its 4 business days before, otherwise 3.
-    energy("CL", "NYMEX", .01, 1000, "Crude Oil", (year, month) {
+    var exp = (year, month) {
       var cal = DateTime(year, month, 25);
       int days = 3;
       if (Holidays.isWeekendOrHoliday(cal)) days = 4;
       return getBusinessDaysBeforeDOM(year, month-1, 25, days);
-    }, "CL", "CL", "CLE");
+    };
+    energy("CL", "NYMEX", .01, 1000, "Crude Oil", exp, "CL", "CL", "CLE");
+    energy("MCL", "NYMEX", .01, 100, "Micro WTI Crude Oil", exp, null, "MCL", "MCLE");
     energy("SMO", "SMFE", .01, 100, "Small Crude Oil", DOW(2, FRIDAY, 1), null, null, "SMO");
     energy("BB", "ICE", .01, 1000, "Brent Crude Oil", BSOM2(1), "CB", "BB", "QO");
     energy("QM", "NYMEX", .025, 500, "E-Mini Crude Oil", BDBDPM(25, 4), "QM", "QM", "NQM");
@@ -1061,7 +1142,7 @@ class SymbolGenerator
 
   String get currency => exchange == "EUREX" ? "EUR" : "USD";
 
-  List<InstrumentInfo> generateSymbols(int year, ServiceType s)
+  List<InstrumentInfo> generateSymbols(int year, ServiceType? s)
   {
     String y = SymbolUtil.getYearStr(year, s == null ? true : s.is2DigitYear());
     List<InstrumentInfo> list=[];

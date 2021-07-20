@@ -45,9 +45,9 @@ class TickerColumns {
   // Futures
   static final OPEN_INTEREST = ColumnInfo("openInterest", "Open Int", 100, true, Alignment.centerLeft);
 
-  static final ALL = <ColumnInfo>[SYMBOL, BID, ASK, LAST, CHANGE, CHANGE_PER, HIGH, LOW, OPEN, PREV_CLOSE, SETTLE, DAY_VOLUME, HIGH52, LOW52, MARKET_CAP, NET_ASSET, PE, DIV_YIELD, DIV_DATE, OPEN_INTEREST];
-  static final CQG_ALL = <ColumnInfo>[SYMBOL, BID, ASK, LAST, CHANGE, CHANGE_PER, HIGH, LOW, OPEN, PREV_CLOSE, SETTLE, DAY_VOLUME, HIGH52, LOW52, OPEN_INTEREST];
-  static final CQG_DEF = <ColumnInfo>[SYMBOL, LAST, CHANGE, CHANGE_PER, HIGH, LOW];
+  static final ALL = <ColumnInfo>[BID, ASK, LAST, CHANGE, CHANGE_PER, HIGH, LOW, OPEN, PREV_CLOSE, SETTLE, DAY_VOLUME, HIGH52, LOW52, MARKET_CAP, NET_ASSET, PE, DIV_YIELD, DIV_DATE, OPEN_INTEREST];
+  static final CQG_ALL = <ColumnInfo>[BID, ASK, LAST, CHANGE, CHANGE_PER, HIGH, LOW, OPEN, PREV_CLOSE, SETTLE, DAY_VOLUME, HIGH52, LOW52, OPEN_INTEREST];
+  static final CQG_DEF = <ColumnInfo>[LAST, CHANGE, CHANGE_PER, HIGH, LOW];
 
   static ColumnInfo? find(String prop)
   {
@@ -62,7 +62,4 @@ class TickerColumns {
     for(var col in CQG_DEF) cols.add(col.property);
     return cols;
   }
-
-
-
 }

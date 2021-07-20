@@ -15,6 +15,8 @@ const kSubtitleStyling = const TextStyle(
     fontWeight: FontWeight.w800
 );
 
+var headerStyle = TextStyle(fontSize: 16);
+
 /// This is the common text styling for a subtile.
 const kCompanyNameHeading = const TextStyle(
     fontSize: 20,
